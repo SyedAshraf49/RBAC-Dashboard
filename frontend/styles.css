@@ -434,7 +434,7 @@ body {
 
 .data-table th {
     padding: 15px 12px;
-    text-align: left;
+    text-align: center;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
@@ -460,6 +460,12 @@ body {
     /* Allow text overflow with ellipsis if needed */
     overflow: hidden;
     text-overflow: ellipsis;
+    vertical-align: top;
+}
+
+/* Contractor column cells - allow wrapping and proper spacing */
+.data-table td .contractor-input + .contractor-link {
+    display: block;
 }
 
 .data-table tbody tr:hover {
@@ -528,6 +534,29 @@ body {
     background: rgba(123, 44, 191, 0.7);
 }
 
+/* GST select dropdown specific styling */
+.data-table .gst-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.data-table .gst-select:focus {
+    outline: none;
+    border-color: #7b2cbf;
+    box-shadow: 0 0 5px rgba(123, 44, 191, 0.3);
+}
+
+.data-table .gst-select option {
+    background: #2d1b69;
+    color: #ffffff;
+    padding: 8px;
+}
+
 .duration-cell {
     font-weight: 600;
 }
@@ -536,10 +565,64 @@ body {
     color: #ff4444;
 }
 
+/* Contractor column - make input field longer */
+.contractor-input {
+    min-width: 200px;
+    width: 100%;
+}
+
+/* Contractor column cell styling */
+.data-table td .contractor-input {
+    display: block;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.data-table td .contractor-link {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    word-break: break-word;
+    white-space: normal;
+    text-align: center;
+}
+
+/* Contractor column cells - allow wrapping (3rd column for contractor list and bill tracker) */
+.data-table td:nth-of-type(3) {
+    white-space: normal;
+}
+
+/* Contractor column cells - allow wrapping (2nd column for EPBG) */
+.epbg-page .data-table td:nth-of-type(2) {
+    white-space: normal;
+}
+
+/* Contractor column is 3rd column in Contractor List and Bill Tracker (after S.NO and E-FILE) */
+.data-table th:nth-of-type(3),
+.data-table td:nth-of-type(3) {
+    min-width: 200px;
+    width: 250px;
+}
+
+/* Contractor column is 2nd column in EPBG table (after S.NO only) */
+.epbg-page .data-table th:nth-of-type(2),
+.epbg-page .data-table td:nth-of-type(2) {
+    min-width: 200px;
+    width: 250px;
+}
+
+/* Override for EPBG - contractor is 2nd column, not 3rd */
+.epbg-page .data-table th:nth-of-type(3),
+.epbg-page .data-table td:nth-of-type(3) {
+    min-width: 100px;
+    width: auto;
+}
+
 .contractor-link {
     color: #00d4ff;
     text-decoration: none;
     transition: all 0.3s ease;
+    display: inline-block;
 }
 
 .contractor-link:hover {

@@ -163,6 +163,13 @@ function addRow() {
             <input type="text" class="description-input" placeholder="Enter Description">
         </td>
         <td>
+            <select class="gst-select">
+                <option value="">Select GST</option>
+                <option value="with gst">With GST</option>
+                <option value="without gst">Without GST</option>
+            </select>
+        </td>
+        <td>
             <input type="text" class="value-input" placeholder="Enter Value">
         </td>
         <td>
@@ -611,31 +618,36 @@ function updateContractorHyperlink(row) {
     
     if (!contractorInput || !contractorLink) return;
     
-    // Get contractor name from input or link (whichever is visible/has value)
-    let contractorName = '';
-    if (contractorInput.style.display !== 'none' && contractorInput.value) {
-        contractorName = contractorInput.value.trim();
-    } else if (contractorLink.textContent) {
-        contractorName = contractorLink.textContent.trim();
+    // Get contractor name from input (input is always visible now)
+    let contractorName = contractorInput.value.trim();
+    
+    // Check if file changed - if so, clean up old URL
+    const currentFileName = contractorLink.dataset.fileName;
+    if (currentFileName && file && file.name !== currentFileName) {
+        if (contractorLink.dataset.objectUrl) {
+            URL.revokeObjectURL(contractorLink.dataset.objectUrl);
+            delete contractorLink.dataset.objectUrl;
+        }
     }
     
-    // Clean up previous object URL
-    if (contractorLink.dataset.objectUrl) {
-        URL.revokeObjectURL(contractorLink.dataset.objectUrl);
-        delete contractorLink.dataset.objectUrl;
-    }
-    
-    if (file && contractorName) {
-        // Create object URL for the file
-        const fileUrl = URL.createObjectURL(file);
+    if (file) {
+        // Get or create object URL for the file
+        let fileUrl = contractorLink.dataset.objectUrl;
+        if (!fileUrl) {
+            fileUrl = URL.createObjectURL(file);
+            contractorLink.dataset.objectUrl = fileUrl;
+            contractorLink.dataset.fileName = file.name;
+        }
+        
         contractorLink.href = '#';
-        contractorLink.textContent = contractorName;
-        contractorLink.dataset.objectUrl = fileUrl;
-        contractorLink.dataset.fileName = file.name;
-        contractorLink.style.display = 'inline-block';
+        contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
+        contractorLink.style.display = contractorName ? 'block' : 'none';
         contractorLink.style.color = '#00d4ff';
         contractorLink.style.textDecoration = 'underline';
         contractorLink.style.cursor = 'pointer';
+        contractorLink.style.marginTop = '5px';
+        contractorLink.style.fontSize = '12px';
+        contractorLink.style.textAlign = 'center';
         
         // Remove existing click listener if any
         contractorLink.replaceWith(contractorLink.cloneNode(true));
@@ -644,18 +656,21 @@ function updateContractorHyperlink(row) {
         // Add click handler to open file visually
         newLink.addEventListener('click', function(e) {
             e.preventDefault();
-            openFileVisually(fileUrl, file.name, file.type);
+            const currentFileUrl = newLink.dataset.objectUrl;
+            if (currentFileUrl) {
+                openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
+            }
         });
         
-        contractorInput.value = contractorName; // Keep input value in sync
-        contractorInput.style.display = 'none';
+        // Always sync link text with input value
+        newLink.textContent = contractorName || newLink.textContent || 'Contractor';
+        newLink.style.display = contractorName ? 'block' : 'none';
+        
+        // Keep input visible
+        contractorInput.style.display = '';
     } else {
         contractorLink.style.display = 'none';
-        contractorInput.style.display = '';
         contractorLink.removeAttribute('href');
-        if (contractorName && !contractorInput.value) {
-            contractorInput.value = contractorName; // Restore value to input
-        }
     }
 }
 
@@ -721,7 +736,7 @@ function deleteRow(button) {
 }
 
 // Save data
-function saveData() {
+async function saveData() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     savedData = [];
@@ -740,6 +755,7 @@ function saveData() {
         }
         
         const description = row.querySelector('.description-input')?.value || '';
+        const gst = row.querySelector('.gst-select')?.value || '';
         const value = row.querySelector('.value-input')?.value || '';
         const startDate = row.querySelector('.start-date-input')?.value || '';
         const endDate = row.querySelector('.end-date-input')?.value || '';
@@ -755,6 +771,7 @@ function saveData() {
             efile,
             contractor,
             description,
+            gst,
             value,
             startDate,
             endDate,
@@ -766,13 +783,17 @@ function saveData() {
         savedData.push(rowData);
     });
     
-    // Save to localStorage
-    saveDataToStorage();
-    
-    alert('Data saved successfully!');
+    // Save to API or localStorage
+    try {
+        await saveDataToStorage();
+        alert('Data saved successfully!');
+    } catch (error) {
+        alert('Error saving data. Please try again.');
+        console.error('Save error:', error);
+    }
 }
 
-// Save data to localStorage
+// Save data to API (with localStorage fallback)
 async function saveDataToStorage() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -787,6 +808,7 @@ async function saveDataToStorage() {
             ? contractorInput.value 
             : (contractorLink?.textContent || '');
         const description = row.querySelector('.description-input')?.value || '';
+        const gst = row.querySelector('.gst-select')?.value || '';
         const value = row.querySelector('.value-input')?.value || '';
         const startDate = row.querySelector('.start-date-input')?.value || '';
         const endDate = row.querySelector('.end-date-input')?.value || '';
@@ -813,6 +835,7 @@ async function saveDataToStorage() {
             efile,
             contractor,
             description,
+            gst,
             value,
             startDate,
             endDate,
@@ -823,28 +846,68 @@ async function saveDataToStorage() {
         });
     }
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    // Try to save to API, fallback to localStorage
+    try {
+        if (typeof contractorListAPI !== 'undefined') {
+            await contractorListAPI.save(dataToSave);
+            console.log('Data saved to API successfully');
+        } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            console.log('Data saved to localStorage (API not available)');
+        }
+    } catch (error) {
+        console.error('Failed to save to API, using localStorage:', error);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }
 }
 
-// Load data from localStorage
-function loadData() {
-    const savedData = localStorage.getItem(STORAGE_KEY);
+// Load data from API (with localStorage fallback)
+async function loadData() {
+    let data = [];
     
-    if (savedData) {
+    // Try to load from API first
+    try {
+        if (typeof contractorListAPI !== 'undefined') {
+            data = await contractorListAPI.load();
+            console.log('Data loaded from API successfully');
+        } else {
+            // Fallback to localStorage if API is not available
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage (API not available)');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load from API, trying localStorage:', error);
+        // Fallback to localStorage
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage fallback');
+            } catch (parseError) {
+                console.error('Error parsing localStorage data:', parseError);
+            }
+        }
+    }
+    
+    if (data && data.length > 0) {
         try {
-            const data = JSON.parse(savedData);
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                const snoValue = rowData.sno || (index + 1);
+                // Map database field names to frontend field names
+                const snoValue = rowData.sno || rowData.SNO || (index + 1);
                 rowCounter = Math.max(rowCounter, parseInt(snoValue) || index + 1);
                 
                 // Extract days from duration string for color coding
                 let isWarning = false;
-                if (rowData.duration && rowData.duration.includes('days')) {
-                    const daysMatch = rowData.duration.match(/(\d+)\s*days/);
+                const duration = rowData.duration || rowData.DURATION || '';
+                if (duration && duration.includes('days')) {
+                    const daysMatch = duration.match(/(\d+)\s*days/);
                     if (daysMatch) {
                         const days = parseInt(daysMatch[1]);
                         isWarning = days <= 60;
@@ -852,38 +915,47 @@ function loadData() {
                 }
                 
                 // Create contractor cell with both input and link
-                const contractorValue = rowData.contractor || '';
-                const hasFile = rowData.fileName && rowData.fileBase64;
+                const contractorValue = rowData.contractor || rowData.CONTRACTOR || '';
+                const fileName = rowData.fileName || rowData.file_name || rowData.FILE_NAME || '';
+                const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
+                const hasFile = fileName && fileBase64;
                 
                 row.innerHTML = `
                     <td>
                         <input type="text" class="sno-input" placeholder="Enter S.No" value="${snoValue}">
                     </td>
                     <td>
-                        <input type="text" class="efile-input" placeholder="Enter E-File" value="${rowData.efile || ''}">
+                        <input type="text" class="efile-input" placeholder="Enter E-File" value="${rowData.efile || rowData.EFILE || ''}">
                     </td>
                     <td>
-                        <input type="text" class="contractor-input" placeholder="Enter Contractor" value="${contractorValue}" ${hasFile ? 'style="display: none;"' : ''}>
-                        <a href="#" class="contractor-link" ${hasFile ? 'style="display: inline-block; color: #00d4ff; text-decoration: underline; cursor: pointer;"' : 'style="display: none;"'}">${contractorValue}</a>
+                        <input type="text" class="contractor-input" placeholder="Enter Contractor" value="${contractorValue}">
+                        <a href="#" class="contractor-link" ${hasFile ? 'style="display: block; color: #00d4ff; text-decoration: underline; cursor: pointer; margin-top: 5px; font-size: 12px; text-align: center;"' : 'style="display: none;"'}">${contractorValue}</a>
                     </td>
                     <td>
-                        <input type="text" class="description-input" placeholder="Enter Description" value="${rowData.description || ''}">
+                        <input type="text" class="description-input" placeholder="Enter Description" value="${rowData.description || rowData.DESCRIPTION || ''}">
                     </td>
                     <td>
-                        <input type="text" class="value-input" placeholder="Enter Value" value="${rowData.value || ''}">
+                        <select class="gst-select">
+                            <option value="">Select GST</option>
+                            <option value="with gst" ${rowData.gst === 'with gst' ? 'selected' : ''}>With GST</option>
+                            <option value="without gst" ${rowData.gst === 'without gst' ? 'selected' : ''}>Without GST</option>
+                        </select>
                     </td>
                     <td>
-                        <input type="date" class="start-date-input" value="${rowData.startDate || ''}">
+                        <input type="text" class="value-input" placeholder="Enter Value" value="${rowData.value || rowData.VALUE || ''}">
                     </td>
                     <td>
-                        <input type="date" class="end-date-input" value="${rowData.endDate || ''}">
+                        <input type="date" class="start-date-input" value="${rowData.startDate || rowData.start_date || rowData.START_DATE || ''}">
+                    </td>
+                    <td>
+                        <input type="date" class="end-date-input" value="${rowData.endDate || rowData.end_date || rowData.END_DATE || ''}">
                     </td>
                     <td class="duration-cell ${isWarning ? 'warning' : ''}">
-                        <span class="duration-display">${rowData.duration || '-'}</span>
+                        <span class="duration-display">${duration || '-'}</span>
                     </td>
                     <td>
                         <input type="file" class="attachment-input" accept="*/*">
-                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${rowData.fileName || ''}</span>
+                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${fileName}</span>
                     </td>
                     <td>
                         <button class="delete-btn" onclick="deleteRow(this)">
@@ -895,9 +967,9 @@ function loadData() {
                 tbody.appendChild(row);
                 
                 // Restore file if it exists
-                if (hasFile && rowData.fileBase64) {
+                if (hasFile && fileBase64) {
                     try {
-                        const file = base64ToFile(rowData.fileBase64, rowData.fileName);
+                        const file = base64ToFile(fileBase64, fileName);
                         const fileInput = row.querySelector('.attachment-input');
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
@@ -1031,6 +1103,7 @@ function printTable() {
                         <th>E-FILE</th>
                         <th>CONTRACTOR</th>
                         <th>DESCRIPTION</th>
+                        <th>GST</th>
                         <th>VALUE</th>
                         <th>START DATE</th>
                         <th>END DATE</th>
@@ -1048,6 +1121,7 @@ function printTable() {
         const contractorLink = row.querySelector('.contractor-link');
         const contractor = contractorInput ? contractorInput.value : (contractorLink ? contractorLink.textContent : '');
         const description = row.querySelector('.description-input')?.value || '';
+        const gst = row.querySelector('.gst-select')?.value || '';
         const value = row.querySelector('.value-input')?.value || '';
         const startDate = row.querySelector('.start-date-input')?.value || '';
         const endDate = row.querySelector('.end-date-input')?.value || '';
@@ -1061,6 +1135,7 @@ function printTable() {
                 <td>${efile}</td>
                 <td>${contractor}</td>
                 <td>${description}</td>
+                <td>${gst}</td>
                 <td>${value}</td>
                 <td>${startDate}</td>
                 <td>${endDate}</td>
@@ -1104,6 +1179,7 @@ function exportToExcel() {
         'E-File',
         'Contractor',
         'Description',
+        'GST',
         'Value',
         'Start Date',
         'End Date',
@@ -1119,6 +1195,7 @@ function exportToExcel() {
         const contractorLink = row.querySelector('.contractor-link');
         const contractor = contractorInput ? contractorInput.value : (contractorLink ? contractorLink.textContent.trim() : '');
         const description = row.querySelector('.description-input')?.value || '';
+        const gst = row.querySelector('.gst-select')?.value || '';
         const value = row.querySelector('.value-input')?.value || '';
         const startDate = row.querySelector('.start-date-input')?.value || '';
         const endDate = row.querySelector('.end-date-input')?.value || '';
@@ -1130,6 +1207,7 @@ function exportToExcel() {
             efile,
             contractor,
             description,
+            gst,
             value,
             startDate,
             endDate,
@@ -1148,6 +1226,7 @@ function exportToExcel() {
         { wch: 20 }, // E-File
         { wch: 25 }, // Contractor
         { wch: 30 }, // Description
+        { wch: 15 }, // GST
         { wch: 15 }, // Value
         { wch: 15 }, // Start Date
         { wch: 15 }, // End Date
@@ -1205,6 +1284,7 @@ function filterTable(searchQuery) {
         const contractorLink = row.querySelector('.contractor-link');
         const contractor = (contractorInput ? contractorInput.value : (contractorLink ? contractorLink.textContent : '')).toLowerCase();
         const description = row.querySelector('.description-input')?.value.toLowerCase() || '';
+        const gst = row.querySelector('.gst-select')?.value.toLowerCase() || '';
         const value = row.querySelector('.value-input')?.value.toLowerCase() || '';
         const startDate = row.querySelector('.start-date-input')?.value.toLowerCase() || '';
         const endDate = row.querySelector('.end-date-input')?.value.toLowerCase() || '';
@@ -1215,6 +1295,7 @@ function filterTable(searchQuery) {
                        efile.includes(query) || 
                        contractor.includes(query) || 
                        description.includes(query) || 
+                       gst.includes(query) ||
                        value.includes(query) || 
                        startDate.includes(query) || 
                        endDate.includes(query) || 
@@ -1239,7 +1320,7 @@ function filterTable(searchQuery) {
         const noResultsRow = document.createElement('tr');
         noResultsRow.className = 'no-results-row';
         noResultsRow.innerHTML = `
-            <td colspan="10" style="text-align: center; padding: 40px; font-size: 18px; color: rgba(255, 255, 255, 0.6);">
+            <td colspan="11" style="text-align: center; padding: 40px; font-size: 18px; color: rgba(255, 255, 255, 0.6);">
                 <i class="fas fa-search" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
                 No results found
             </td>

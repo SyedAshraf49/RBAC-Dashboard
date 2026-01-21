@@ -201,31 +201,36 @@ function updateContractorHyperlink(row) {
     
     if (!contractorInput || !contractorLink) return;
     
-    // Get contractor name from input or link (whichever is visible/has value)
-    let contractorName = '';
-    if (contractorInput.style.display !== 'none' && contractorInput.value) {
-        contractorName = contractorInput.value.trim();
-    } else if (contractorLink.textContent) {
-        contractorName = contractorLink.textContent.trim();
+    // Get contractor name from input (input is always visible now)
+    let contractorName = contractorInput.value.trim();
+    
+    // Check if file changed - if so, clean up old URL
+    const currentFileName = contractorLink.dataset.fileName;
+    if (currentFileName && file && file.name !== currentFileName) {
+        if (contractorLink.dataset.objectUrl) {
+            URL.revokeObjectURL(contractorLink.dataset.objectUrl);
+            delete contractorLink.dataset.objectUrl;
+        }
     }
     
-    // Clean up previous object URL
-    if (contractorLink.dataset.objectUrl) {
-        URL.revokeObjectURL(contractorLink.dataset.objectUrl);
-        delete contractorLink.dataset.objectUrl;
-    }
-    
-    if (file && contractorName) {
-        // Create object URL for the file
-        const fileUrl = URL.createObjectURL(file);
+    if (file) {
+        // Get or create object URL for the file
+        let fileUrl = contractorLink.dataset.objectUrl;
+        if (!fileUrl) {
+            fileUrl = URL.createObjectURL(file);
+            contractorLink.dataset.objectUrl = fileUrl;
+            contractorLink.dataset.fileName = file.name;
+        }
+        
         contractorLink.href = '#';
-        contractorLink.textContent = contractorName;
-        contractorLink.dataset.objectUrl = fileUrl;
-        contractorLink.dataset.fileName = file.name;
-        contractorLink.style.display = 'inline-block';
+        contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
+        contractorLink.style.display = contractorName ? 'block' : 'none';
         contractorLink.style.color = '#00d4ff';
         contractorLink.style.textDecoration = 'underline';
         contractorLink.style.cursor = 'pointer';
+        contractorLink.style.marginTop = '5px';
+        contractorLink.style.fontSize = '12px';
+        contractorLink.style.textAlign = 'center';
         
         // Remove existing click listener if any
         contractorLink.replaceWith(contractorLink.cloneNode(true));
@@ -234,18 +239,21 @@ function updateContractorHyperlink(row) {
         // Add click handler to open file visually
         newLink.addEventListener('click', function(e) {
             e.preventDefault();
-            openFileVisually(fileUrl, file.name, file.type);
+            const currentFileUrl = newLink.dataset.objectUrl;
+            if (currentFileUrl) {
+                openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
+            }
         });
         
-        contractorInput.value = contractorName; // Keep input value in sync
-        contractorInput.style.display = 'none';
+        // Always sync link text with input value
+        newLink.textContent = contractorName || newLink.textContent || 'Contractor';
+        newLink.style.display = contractorName ? 'block' : 'none';
+        
+        // Keep input visible
+        contractorInput.style.display = '';
     } else {
         contractorLink.style.display = 'none';
-        contractorInput.style.display = '';
         contractorLink.removeAttribute('href');
-        if (contractorName && !contractorInput.value) {
-            contractorInput.value = contractorName; // Restore value to input
-        }
     }
 }
 
@@ -311,7 +319,7 @@ function deleteRow(button) {
 }
 
 // Save data
-function saveData() {
+async function saveData() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     savedData = [];
@@ -361,13 +369,17 @@ function saveData() {
         savedData.push(rowData);
     });
     
-    // Save to localStorage
-    saveDataToStorage();
-    
-    alert('Data saved successfully!');
+    // Save to API or localStorage
+    try {
+        await saveDataToStorage();
+        alert('Data saved successfully!');
+    } catch (error) {
+        alert('Error saving data. Please try again.');
+        console.error('Save error:', error);
+    }
 }
 
-// Save data to localStorage
+// Save data to API (with localStorage fallback)
 async function saveDataToStorage() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -422,69 +434,110 @@ async function saveDataToStorage() {
         });
     }
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    // Try to save to API, fallback to localStorage
+    try {
+        if (typeof billTrackerAPI !== 'undefined') {
+            await billTrackerAPI.save(dataToSave);
+            console.log('Data saved to API successfully');
+        } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            console.log('Data saved to localStorage (API not available)');
+        }
+    } catch (error) {
+        console.error('Failed to save to API, using localStorage:', error);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }
 }
 
-// Load data from localStorage
-function loadData() {
-    const savedData = localStorage.getItem(STORAGE_KEY);
+// Load data from API (with localStorage fallback)
+async function loadData() {
+    let data = [];
     
-    if (savedData) {
+    // Try to load from API first
+    try {
+        if (typeof billTrackerAPI !== 'undefined') {
+            data = await billTrackerAPI.load();
+            console.log('Data loaded from API successfully');
+        } else {
+            // Fallback to localStorage if API is not available
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage (API not available)');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load from API, trying localStorage:', error);
+        // Fallback to localStorage
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage fallback');
+            } catch (parseError) {
+                console.error('Error parsing localStorage data:', parseError);
+            }
+        }
+    }
+    
+    if (data && data.length > 0) {
         try {
-            const data = JSON.parse(savedData);
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                const snoValue = rowData.sno || (index + 1);
+                // Map database field names to frontend field names
+                const snoValue = rowData.sno || rowData.SNO || (index + 1);
                 rowCounter = Math.max(rowCounter, parseInt(snoValue) || index + 1);
                 
                 // Create contractor cell with both input and link
-                const contractorValue = rowData.contractor || '';
-                const hasFile = rowData.fileName && rowData.fileBase64;
+                const contractorValue = rowData.contractor || rowData.CONTRACTOR || '';
+                const fileName = rowData.fileName || rowData.file_name || rowData.FILE_NAME || '';
+                const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
+                const hasFile = fileName && fileBase64;
                 
                 row.innerHTML = `
                     <td>
                         <input type="text" class="sno-input" placeholder="Enter S.No" value="${snoValue}">
                     </td>
                     <td>
-                        <input type="text" class="efile-input" placeholder="Enter E-File" value="${rowData.efile || ''}">
+                        <input type="text" class="efile-input" placeholder="Enter E-File" value="${rowData.efile || rowData.EFILE || ''}">
                     </td>
                     <td>
-                        <input type="text" class="contractor-input" placeholder="Enter Contractor" value="${contractorValue}" ${hasFile ? 'style="display: none;"' : ''}>
-                        <a href="#" class="contractor-link" ${hasFile ? 'style="display: inline-block; color: #00d4ff; text-decoration: underline; cursor: pointer;"' : 'style="display: none;"'}">${contractorValue}</a>
+                        <input type="text" class="contractor-input" placeholder="Enter Contractor" value="${contractorValue}">
+                        <a href="#" class="contractor-link" ${hasFile ? 'style="display: block; color: #00d4ff; text-decoration: underline; cursor: pointer; margin-top: 5px; font-size: 12px; text-align: center;"' : 'style="display: none;"'}">${contractorValue}</a>
                     </td>
                     <td>
-                        <input type="date" class="approved-date-input" value="${rowData.approvedDate || ''}">
+                        <input type="date" class="approved-date-input" value="${rowData.approvedDate || rowData.approved_date || rowData.APPROVED_DATE || ''}">
                     </td>
                     <td>
-                        <input type="text" class="approved-amount-input" placeholder="Enter Amount" value="${rowData.approvedAmount || ''}">
+                        <input type="text" class="approved-amount-input" placeholder="Enter Amount" value="${rowData.approvedAmount || rowData.approved_amount || rowData.APPROVED_AMOUNT || ''}">
                     </td>
                     <td>
                         <select class="bill-frequency-input">
                             <option value="">Select Frequency</option>
-                            <option value="monthly" ${rowData.billFrequency === 'monthly' ? 'selected' : ''}>Monthly</option>
-                            <option value="quarterly" ${rowData.billFrequency === 'quarterly' ? 'selected' : ''}>Quarterly</option>
-                            <option value="half-yearly" ${rowData.billFrequency === 'half-yearly' ? 'selected' : ''}>Half Yearly</option>
-                            <option value="annually" ${rowData.billFrequency === 'annually' ? 'selected' : ''}>Annually</option>
+                            <option value="monthly" ${(rowData.billFrequency || rowData.bill_frequency || rowData.BILL_FREQUENCY || '') === 'monthly' ? 'selected' : ''}>Monthly</option>
+                            <option value="quarterly" ${(rowData.billFrequency || rowData.bill_frequency || rowData.BILL_FREQUENCY || '') === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                            <option value="half-yearly" ${(rowData.billFrequency || rowData.bill_frequency || rowData.BILL_FREQUENCY || '') === 'half-yearly' ? 'selected' : ''}>Half Yearly</option>
+                            <option value="annually" ${(rowData.billFrequency || rowData.bill_frequency || rowData.BILL_FREQUENCY || '') === 'annually' ? 'selected' : ''}>Annually</option>
                         </select>
                     </td>
                     <td>
-                        <input type="date" class="bill-date-input" value="${rowData.billDate || ''}">
+                        <input type="date" class="bill-date-input" value="${rowData.billDate || rowData.bill_date || rowData.BILL_DATE || ''}">
                     </td>
                     <td>
-                        <input type="date" class="bill-due-date-input" value="${rowData.billDueDate || ''}">
+                        <input type="date" class="bill-due-date-input" value="${rowData.billDueDate || rowData.bill_due_date || rowData.BILL_DUE_DATE || ''}">
                     </td>
                     <td>
-                        <input type="date" class="bill-paid-date-input" value="${rowData.billPaidDate || ''}">
+                        <input type="date" class="bill-paid-date-input" value="${rowData.billPaidDate || rowData.bill_paid_date || rowData.BILL_PAID_DATE || ''}">
                     </td>
                     <td>
-                        <input type="text" class="paid-amount-input" placeholder="Enter Amount" value="${rowData.paidAmount || ''}">
+                        <input type="text" class="paid-amount-input" placeholder="Enter Amount" value="${rowData.paidAmount || rowData.paid_amount || rowData.PAID_AMOUNT || ''}">
                     </td>
                     <td>
                         <input type="file" class="attachment-input" accept="*/*">
-                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${rowData.fileName || ''}</span>
+                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${fileName}</span>
                     </td>
                     <td>
                         <button class="delete-btn" onclick="deleteRow(this)">
@@ -496,9 +549,9 @@ function loadData() {
                 tbody.appendChild(row);
                 
                 // Restore file if it exists
-                if (hasFile && rowData.fileBase64) {
+                if (hasFile && fileBase64) {
                     try {
-                        const file = base64ToFile(rowData.fileBase64, rowData.fileName);
+                        const file = base64ToFile(fileBase64, fileName);
                         const fileInput = row.querySelector('.attachment-input');
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);

@@ -102,6 +102,7 @@ function addRow() {
         </td>
         <td>
             <input type="text" class="contractor-input" placeholder="Enter Contractor Name">
+            <a href="#" class="contractor-link" style="display: none;" target="_blank"></a>
         </td>
         <td>
             <input type="text" class="po-no-input" placeholder="Enter P.O No">
@@ -141,6 +142,13 @@ function addRow() {
     const fileInput = row.querySelector('.attachment-input');
     fileInput.addEventListener('change', function (e) {
         validateFileSize(e.target);
+        updateContractorHyperlink(row);
+    });
+
+    // Setup contractor input listener
+    const contractorInput = row.querySelector('.contractor-input');
+    contractorInput.addEventListener('input', function() {
+        updateContractorHyperlink(row);
     });
 
     updateTotalCount();
@@ -167,6 +175,71 @@ function validateFileSize(input) {
         }
     }
     return false;
+}
+
+// Update contractor cell to show hyperlink when file is attached
+function updateContractorHyperlink(row) {
+    const contractorInput = row.querySelector('.contractor-input');
+    const contractorLink = row.querySelector('.contractor-link');
+    const attachmentInput = row.querySelector('.attachment-input');
+    const file = attachmentInput?.files[0];
+    
+    if (!contractorInput || !contractorLink) return;
+    
+    // Get contractor name from input (input is always visible now)
+    let contractorName = contractorInput.value.trim();
+    
+    // Check if file changed - if so, clean up old URL
+    const currentFileName = contractorLink.dataset.fileName;
+    if (currentFileName && file && file.name !== currentFileName) {
+        if (contractorLink.dataset.objectUrl) {
+            URL.revokeObjectURL(contractorLink.dataset.objectUrl);
+            delete contractorLink.dataset.objectUrl;
+        }
+    }
+    
+    if (file) {
+        // Get or create object URL for the file
+        let fileUrl = contractorLink.dataset.objectUrl;
+        if (!fileUrl) {
+            fileUrl = URL.createObjectURL(file);
+            contractorLink.dataset.objectUrl = fileUrl;
+            contractorLink.dataset.fileName = file.name;
+        }
+        
+        contractorLink.href = '#';
+        contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
+        contractorLink.style.display = contractorName ? 'block' : 'none';
+        contractorLink.style.color = '#00d4ff';
+        contractorLink.style.textDecoration = 'underline';
+        contractorLink.style.cursor = 'pointer';
+        contractorLink.style.marginTop = '5px';
+        contractorLink.style.fontSize = '12px';
+        contractorLink.style.textAlign = 'center';
+        
+        // Remove existing click listener if any
+        contractorLink.replaceWith(contractorLink.cloneNode(true));
+        const newLink = row.querySelector('.contractor-link');
+        
+        // Add click handler to open file visually
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentFileUrl = newLink.dataset.objectUrl;
+            if (currentFileUrl) {
+                openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
+            }
+        });
+        
+        // Always sync link text with input value
+        newLink.textContent = contractorName || newLink.textContent || 'Contractor';
+        newLink.style.display = contractorName ? 'block' : 'none';
+        
+        // Keep input visible
+        contractorInput.style.display = '';
+    } else {
+        contractorLink.style.display = 'none';
+        contractorLink.removeAttribute('href');
+    }
 }
 
 // Update BG No hyperlink based on BG No and attachment (called on Save)
@@ -277,14 +350,18 @@ function deleteRow(button) {
 }
 
 // Save data (and update BG link after Save button click)
-function saveData() {
+async function saveData() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     savedData = [];
 
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
-        const contractor = row.querySelector('.contractor-input')?.value || '';
+        const contractorInput = row.querySelector('.contractor-input');
+        const contractorLink = row.querySelector('.contractor-link');
+        const contractor = contractorInput && contractorInput.style.display !== 'none' 
+            ? contractorInput.value 
+            : (contractorLink?.textContent || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
         const bgLink = row.querySelector('.bg-link');
@@ -302,7 +379,8 @@ function saveData() {
         const attachmentInput = row.querySelector('.attachment-input');
         const file = attachmentInput?.files[0];
 
-        // Only convert BG No to hyperlink on Save
+        // Update contractor and BG No hyperlinks on Save
+        updateContractorHyperlink(row);
         updateBgHyperlink(row);
 
         const rowData = {
@@ -322,11 +400,17 @@ function saveData() {
         savedData.push(rowData);
     });
 
-    saveDataToStorage();
-    alert('Data saved successfully!');
+    // Save to API or localStorage
+    try {
+        await saveDataToStorage();
+        alert('Data saved successfully!');
+    } catch (error) {
+        alert('Error saving data. Please try again.');
+        console.error('Save error:', error);
+    }
 }
 
-// Save data to localStorage (with file as base64)
+// Save data to API (with localStorage fallback)
 async function saveDataToStorage() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -334,7 +418,11 @@ async function saveDataToStorage() {
 
     for (const row of rows) {
         const sno = row.querySelector('.sno-input')?.value || '';
-        const contractor = row.querySelector('.contractor-input')?.value || '';
+        const contractorInput = row.querySelector('.contractor-input');
+        const contractorLink = row.querySelector('.contractor-link');
+        const contractor = contractorInput && contractorInput.style.display !== 'none' 
+            ? contractorInput.value 
+            : (contractorLink?.textContent || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
         const bgLink = row.querySelector('.bg-link');
@@ -379,59 +467,102 @@ async function saveDataToStorage() {
         });
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    // Try to save to API, fallback to localStorage
+    try {
+        if (typeof epbgAPI !== 'undefined') {
+            await epbgAPI.save(dataToSave);
+            console.log('Data saved to API successfully');
+        } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            console.log('Data saved to localStorage (API not available)');
+        }
+    } catch (error) {
+        console.error('Failed to save to API, using localStorage:', error);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }
 }
 
-// Load data from localStorage
-function loadData() {
-    const savedData = localStorage.getItem(STORAGE_KEY);
+// Load data from API (with localStorage fallback)
+async function loadData() {
+    let data = [];
+    
+    // Try to load from API first
+    try {
+        if (typeof epbgAPI !== 'undefined') {
+            data = await epbgAPI.load();
+            console.log('Data loaded from API successfully');
+        } else {
+            // Fallback to localStorage if API is not available
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage (API not available)');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load from API, trying localStorage:', error);
+        // Fallback to localStorage
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                data = JSON.parse(savedData);
+                console.log('Data loaded from localStorage fallback');
+            } catch (parseError) {
+                console.error('Error parsing localStorage data:', parseError);
+            }
+        }
+    }
 
-    if (savedData) {
+    if (data && data.length > 0) {
         try {
-            const data = JSON.parse(savedData);
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                const snoValue = rowData.sno || (index + 1);
+                // Map database field names to frontend field names
+                const snoValue = rowData.sno || rowData.SNO || (index + 1);
                 rowCounter = Math.max(rowCounter, parseInt(snoValue) || index + 1);
 
-                const hasFile = rowData.fileName && rowData.fileBase64;
-                const bgValue = rowData.bgNo || '';
+                const contractorValue = rowData.contractor || rowData.CONTRACTOR || '';
+                const fileName = rowData.fileName || rowData.file_name || rowData.FILE_NAME || '';
+                const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
+                const hasFile = fileName && fileBase64;
+                const bgValue = rowData.bgNo || rowData.bg_no || rowData.BG_NO || '';
 
                 row.innerHTML = `
                     <td>
                         <input type="text" class="sno-input" placeholder="Enter S.No" value="${snoValue}">
                     </td>
                     <td>
-                        <input type="text" class="contractor-input" placeholder="Enter Contractor Name" value="${rowData.contractor || ''}">
+                        <input type="text" class="contractor-input" placeholder="Enter Contractor Name" value="${contractorValue}">
+                        <a href="#" class="contractor-link" ${hasFile ? 'style="display: block; color: #00d4ff; text-decoration: underline; cursor: pointer; margin-top: 5px; font-size: 12px; text-align: center;"' : 'style="display: none;"'}">${contractorValue}</a>
                     </td>
                     <td>
-                        <input type="text" class="po-no-input" placeholder="Enter P.O No" value="${rowData.poNo || ''}">
+                        <input type="text" class="po-no-input" placeholder="Enter P.O No" value="${rowData.poNo || rowData.po_no || rowData.PO_NO || ''}">
                     </td>
                     <td>
                         <input type="text" class="bg-no-input" placeholder="Enter BG No" value="${bgValue}" ${hasFile ? 'style="display: none;"' : ''}>
                         <a href="#" class="bg-link" ${hasFile ? 'style="display: inline-block; color: #00d4ff; text-decoration: underline; cursor: pointer;"' : 'style="display: none;"'}">${bgValue}</a>
                     </td>
                     <td>
-                        <input type="date" class="bg-date-input" value="${rowData.bgDate || ''}">
+                        <input type="date" class="bg-date-input" value="${rowData.bgDate || rowData.bg_date || rowData.BG_DATE || ''}">
                     </td>
                     <td>
-                        <input type="text" class="bg-amount-input" placeholder="Enter BG Amount" value="${rowData.bgAmount || ''}">
+                        <input type="text" class="bg-amount-input" placeholder="Enter BG Amount" value="${rowData.bgAmount || rowData.bg_amount || rowData.BG_AMOUNT || ''}">
                     </td>
                     <td>
-                        <input type="text" class="bg-validity-input" placeholder="Enter BG Validity" value="${rowData.bgValidity || ''}">
+                        <input type="text" class="bg-validity-input" placeholder="Enter BG Validity" value="${rowData.bgValidity || rowData.bg_validity || rowData.BG_VALIDITY || ''}">
                     </td>
                     <td>
-                        <input type="text" class="gem-bid-input" placeholder="Enter GeM Bid No" value="${rowData.gemBid || ''}">
+                        <input type="text" class="gem-bid-input" placeholder="Enter GeM Bid No" value="${rowData.gemBid || rowData.gem_bid_no || rowData.GEM_BID_NO || ''}">
                     </td>
                     <td>
-                        <input type="text" class="ref-efile-input" placeholder="Enter Ref Efile No" value="${rowData.refEfile || ''}">
+                        <input type="text" class="ref-efile-input" placeholder="Enter Ref Efile No" value="${rowData.refEfile || rowData.ref_efile_no || rowData.REF_EFILE_NO || ''}">
                     </td>
                     <td>
                         <input type="file" class="attachment-input" accept="*/*">
-                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${rowData.fileName || ''}</span>
+                        <span class="file-name" style="color: #00d4ff; font-size: 12px;">${fileName}</span>
                     </td>
                     <td>
                         <button class="delete-btn" onclick="deleteRow(this)">
@@ -443,39 +574,69 @@ function loadData() {
                 tbody.appendChild(row);
 
                 // Restore file if it exists
-                if (hasFile && rowData.fileBase64) {
+                if (hasFile && fileBase64) {
                     try {
-                        const file = base64ToFile(rowData.fileBase64, rowData.fileName);
+                        const file = base64ToFile(fileBase64, fileName);
                         const fileInput = row.querySelector('.attachment-input');
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
                         fileInput.files = dataTransfer.files;
 
+                        const fileUrl = URL.createObjectURL(file);
+
+                        // Update contractor link
+                        const contractorLink = row.querySelector('.contractor-link');
+                        if (contractorLink && contractorValue) {
+                            contractorLink.href = '#';
+                            contractorLink.dataset.objectUrl = fileUrl;
+                            contractorLink.dataset.fileName = file.name;
+                            
+                            // Remove existing click listener if any
+                            contractorLink.replaceWith(contractorLink.cloneNode(true));
+                            const newContractorLink = row.querySelector('.contractor-link');
+                            
+                            // Add click handler to open file visually
+                            newContractorLink.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                openFileVisually(fileUrl, file.name, file.type);
+                            });
+                        }
+
                         // Update BG link
                         const bgLink = row.querySelector('.bg-link');
-                        const fileUrl = URL.createObjectURL(file);
-                        bgLink.href = '#';
-                        bgLink.dataset.objectUrl = fileUrl;
-                        bgLink.dataset.fileName = file.name;
-                        
-                        // Remove existing click listener if any
-                        bgLink.replaceWith(bgLink.cloneNode(true));
-                        const newLink = row.querySelector('.bg-link');
-                        
-                        // Add click handler to open file visually
-                        newLink.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            openFileVisually(fileUrl, file.name, file.type);
-                        });
+                        if (bgLink && bgValue) {
+                            bgLink.href = '#';
+                            bgLink.dataset.objectUrl = fileUrl;
+                            bgLink.dataset.fileName = file.name;
+                            
+                            // Remove existing click listener if any
+                            bgLink.replaceWith(bgLink.cloneNode(true));
+                            const newBgLink = row.querySelector('.bg-link');
+                            
+                            // Add click handler to open file visually
+                            newBgLink.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                openFileVisually(fileUrl, file.name, file.type);
+                            });
+                        }
                     } catch (error) {
                         console.error('Error restoring file:', error);
                     }
                 }
 
                 const fileInput = row.querySelector('.attachment-input');
+                const contractorInput = row.querySelector('.contractor-input');
+                
                 if (fileInput) {
                     fileInput.addEventListener('change', function (e) {
                         validateFileSize(e.target);
+                        updateContractorHyperlink(row);
+                    });
+                }
+                
+                if (contractorInput) {
+                    contractorInput.addEventListener('input', function() {
+                        updateContractorHyperlink(row);
                     });
                 }
             });
@@ -564,7 +725,11 @@ function printTable() {
 
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
-        const contractor = row.querySelector('.contractor-input')?.value || '';
+        const contractorInput = row.querySelector('.contractor-input');
+        const contractorLink = row.querySelector('.contractor-link');
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
+            : (contractorLink?.textContent || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
         const bgLink = row.querySelector('.bg-link');
@@ -637,7 +802,11 @@ function exportToExcel() {
 
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
-        const contractor = row.querySelector('.contractor-input')?.value || '';
+        const contractorInput = row.querySelector('.contractor-input');
+        const contractorLink = row.querySelector('.contractor-link');
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
+            : (contractorLink?.textContent.trim() || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
         const bgLink = row.querySelector('.bg-link');
