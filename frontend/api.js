@@ -1,5 +1,5 @@
 // API configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 // Helper function to make API calls
 async function apiCall(endpoint, method = 'GET', data = null) {
@@ -8,7 +8,8 @@ async function apiCall(endpoint, method = 'GET', data = null) {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            credentials: 'include' // Include cookies for session management
         };
 
         if (data) {
@@ -16,7 +17,14 @@ async function apiCall(endpoint, method = 'GET', data = null) {
         }
 
         const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-        
+
+        // Check for 401 Unauthorized - redirect to login
+        if (response.status === 401) {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+            throw new Error('Session expired. Please login again.');
+        }
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(errorData?.error || `API error: ${response.status}`);

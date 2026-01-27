@@ -26,6 +26,19 @@ function setupEventListeners() {
             filterTable(e.target.value);
         });
     }
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+            const user = Auth.getUser();
+            if (user) {
+                const currentTheme = user.theme || 'light';
+                const newTheme = (currentTheme === 'light') ? 'dark' : 'light';
+                Auth.updateTheme(newTheme);
+            }
+        });
+    }
 }
 
 // Mobile menu functionality (reused pattern)
@@ -147,7 +160,7 @@ function addRow() {
 
     // Setup contractor input listener
     const contractorInput = row.querySelector('.contractor-input');
-    contractorInput.addEventListener('input', function() {
+    contractorInput.addEventListener('input', function () {
         updateContractorHyperlink(row);
     });
 
@@ -183,12 +196,12 @@ function updateContractorHyperlink(row) {
     const contractorLink = row.querySelector('.contractor-link');
     const attachmentInput = row.querySelector('.attachment-input');
     const file = attachmentInput?.files[0];
-    
+
     if (!contractorInput || !contractorLink) return;
-    
+
     // Get contractor name from input (input is always visible now)
     let contractorName = contractorInput.value.trim();
-    
+
     // Check if file changed - if so, clean up old URL
     const currentFileName = contractorLink.dataset.fileName;
     if (currentFileName && file && file.name !== currentFileName) {
@@ -197,7 +210,7 @@ function updateContractorHyperlink(row) {
             delete contractorLink.dataset.objectUrl;
         }
     }
-    
+
     if (file) {
         // Get or create object URL for the file
         let fileUrl = contractorLink.dataset.objectUrl;
@@ -206,7 +219,7 @@ function updateContractorHyperlink(row) {
             contractorLink.dataset.objectUrl = fileUrl;
             contractorLink.dataset.fileName = file.name;
         }
-        
+
         contractorLink.href = '#';
         contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
         contractorLink.style.display = contractorName ? 'block' : 'none';
@@ -216,24 +229,24 @@ function updateContractorHyperlink(row) {
         contractorLink.style.marginTop = '5px';
         contractorLink.style.fontSize = '12px';
         contractorLink.style.textAlign = 'center';
-        
+
         // Remove existing click listener if any
         contractorLink.replaceWith(contractorLink.cloneNode(true));
         const newLink = row.querySelector('.contractor-link');
-        
+
         // Add click handler to open file visually
-        newLink.addEventListener('click', function(e) {
+        newLink.addEventListener('click', function (e) {
             e.preventDefault();
             const currentFileUrl = newLink.dataset.objectUrl;
             if (currentFileUrl) {
                 openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
             }
         });
-        
+
         // Always sync link text with input value
         newLink.textContent = contractorName || newLink.textContent || 'Contractor';
         newLink.style.display = contractorName ? 'block' : 'none';
-        
+
         // Keep input visible
         contractorInput.style.display = '';
     } else {
@@ -269,17 +282,17 @@ function updateBgHyperlink(row) {
         bgLink.style.color = '#00d4ff';
         bgLink.style.textDecoration = 'underline';
         bgLink.style.cursor = 'pointer';
-        
+
         // Remove existing click listener if any
         bgLink.replaceWith(bgLink.cloneNode(true));
         const newLink = row.querySelector('.bg-link');
-        
+
         // Add click handler to open file visually
-        newLink.addEventListener('click', function(e) {
+        newLink.addEventListener('click', function (e) {
             e.preventDefault();
             openFileVisually(fileUrl, file.name, file.type);
         });
-        
+
         bgInput.style.display = 'none';
     } else {
         bgLink.style.display = 'none';
@@ -320,10 +333,10 @@ function openFileVisually(fileUrl, fileName, fileType) {
         'text/plain', 'text/html', 'text/css', 'text/javascript',
         'application/json', 'application/xml'
     ];
-    
-    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) || 
-                          displayableTypes.includes(fileType);
-    
+
+    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) ||
+        displayableTypes.includes(fileType);
+
     if (isDisplayable) {
         // Open in new window/tab for inline viewing
         const newWindow = window.open(fileUrl, '_blank');
@@ -359,8 +372,8 @@ async function saveData() {
         const sno = row.querySelector('.sno-input')?.value || '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        const contractor = contractorInput && contractorInput.style.display !== 'none' 
-            ? contractorInput.value 
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
             : (contractorLink?.textContent || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
@@ -420,8 +433,8 @@ async function saveDataToStorage() {
         const sno = row.querySelector('.sno-input')?.value || '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        const contractor = contractorInput && contractorInput.style.display !== 'none' 
-            ? contractorInput.value 
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
             : (contractorLink?.textContent || '');
         const poNo = row.querySelector('.po-no-input')?.value || '';
         const bgInput = row.querySelector('.bg-no-input');
@@ -485,7 +498,7 @@ async function saveDataToStorage() {
 // Load data from API (with localStorage fallback)
 async function loadData() {
     let data = [];
-    
+
     // Try to load from API first
     try {
         if (typeof epbgAPI !== 'undefined') {
@@ -590,13 +603,13 @@ async function loadData() {
                             contractorLink.href = '#';
                             contractorLink.dataset.objectUrl = fileUrl;
                             contractorLink.dataset.fileName = file.name;
-                            
+
                             // Remove existing click listener if any
                             contractorLink.replaceWith(contractorLink.cloneNode(true));
                             const newContractorLink = row.querySelector('.contractor-link');
-                            
+
                             // Add click handler to open file visually
-                            newContractorLink.addEventListener('click', function(e) {
+                            newContractorLink.addEventListener('click', function (e) {
                                 e.preventDefault();
                                 openFileVisually(fileUrl, file.name, file.type);
                             });
@@ -608,13 +621,13 @@ async function loadData() {
                             bgLink.href = '#';
                             bgLink.dataset.objectUrl = fileUrl;
                             bgLink.dataset.fileName = file.name;
-                            
+
                             // Remove existing click listener if any
                             bgLink.replaceWith(bgLink.cloneNode(true));
                             const newBgLink = row.querySelector('.bg-link');
-                            
+
                             // Add click handler to open file visually
-                            newBgLink.addEventListener('click', function(e) {
+                            newBgLink.addEventListener('click', function (e) {
                                 e.preventDefault();
                                 openFileVisually(fileUrl, file.name, file.type);
                             });
@@ -626,16 +639,16 @@ async function loadData() {
 
                 const fileInput = row.querySelector('.attachment-input');
                 const contractorInput = row.querySelector('.contractor-input');
-                
+
                 if (fileInput) {
                     fileInput.addEventListener('change', function (e) {
                         validateFileSize(e.target);
                         updateContractorHyperlink(row);
                     });
                 }
-                
+
                 if (contractorInput) {
-                    contractorInput.addEventListener('input', function() {
+                    contractorInput.addEventListener('input', function () {
                         updateContractorHyperlink(row);
                     });
                 }

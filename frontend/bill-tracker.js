@@ -4,7 +4,7 @@ let savedData = [];
 const STORAGE_KEY = 'billTrackerData';
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadData();
     setupEventListeners();
     updateTotalCount();
@@ -18,12 +18,25 @@ function setupEventListeners() {
     document.getElementById('refreshBtn').addEventListener('click', refreshPage);
     document.getElementById('printBtn').addEventListener('click', printTable);
     document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-    
+
     // Search functionality
     const searchInput = document.querySelector('.search-input');
     if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
+        searchInput.addEventListener('input', function (e) {
             filterTable(e.target.value);
+        });
+    }
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+            const user = Auth.getUser();
+            if (user) {
+                const currentTheme = user.theme || 'light';
+                const newTheme = (currentTheme === 'light') ? 'dark' : 'light';
+                Auth.updateTheme(newTheme);
+            }
         });
     }
 }
@@ -32,20 +45,20 @@ function setupEventListeners() {
 function setupMobileMenu() {
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const sidebar = document.getElementById('sidebar');
-    
+
     // Create overlay element
     const overlay = document.createElement('div');
     overlay.className = 'mobile-overlay';
     document.body.appendChild(overlay);
-    
+
     if (mobileMenuToggle && sidebar) {
         // Toggle menu
-        mobileMenuToggle.addEventListener('click', function(e) {
+        mobileMenuToggle.addEventListener('click', function (e) {
             e.stopPropagation();
             sidebar.classList.toggle('mobile-open');
             mobileMenuToggle.classList.toggle('active');
             overlay.classList.toggle('active');
-            
+
             // Change icon
             const icon = mobileMenuToggle.querySelector('i');
             if (sidebar.classList.contains('mobile-open')) {
@@ -56,9 +69,9 @@ function setupMobileMenu() {
                 document.body.style.overflow = '';
             }
         });
-        
+
         // Close menu when clicking overlay
-        overlay.addEventListener('click', function() {
+        overlay.addEventListener('click', function () {
             sidebar.classList.remove('mobile-open');
             mobileMenuToggle.classList.remove('active');
             overlay.classList.remove('active');
@@ -66,11 +79,11 @@ function setupMobileMenu() {
             icon.className = 'fas fa-bars';
             document.body.style.overflow = '';
         });
-        
+
         // Close sidebar when clicking a nav item on mobile
         const navItems = sidebar.querySelectorAll('.nav-item');
         navItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 if (window.innerWidth <= 768) {
                     sidebar.classList.remove('mobile-open');
                     mobileMenuToggle.classList.remove('active');
@@ -81,9 +94,9 @@ function setupMobileMenu() {
                 }
             });
         });
-        
+
         // Handle window resize
-        window.addEventListener('resize', function() {
+        window.addEventListener('resize', function () {
             if (window.innerWidth > 768) {
                 sidebar.classList.remove('mobile-open');
                 mobileMenuToggle.classList.remove('active');
@@ -101,7 +114,7 @@ function addRow() {
     const tbody = document.getElementById('tableBody');
     const row = document.createElement('tr');
     rowCounter++;
-    
+
     row.innerHTML = `
         <td>
             <input type="text" class="sno-input" placeholder="Enter S.No" value="${rowCounter}">
@@ -150,22 +163,22 @@ function addRow() {
             </button>
         </td>
     `;
-    
+
     tbody.appendChild(row);
-    
+
     // Add file size validation
     const fileInput = row.querySelector('.attachment-input');
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', function (e) {
         validateFileSize(e.target);
         updateContractorHyperlink(row);
     });
-    
+
     // Setup contractor input listener
     const contractorInput = row.querySelector('.contractor-input');
-    contractorInput.addEventListener('input', function() {
+    contractorInput.addEventListener('input', function () {
         updateContractorHyperlink(row);
     });
-    
+
     updateTotalCount();
 }
 
@@ -173,10 +186,10 @@ function addRow() {
 function validateFileSize(input) {
     const file = input.files[0];
     const fileNameSpan = input.parentElement.querySelector('.file-name');
-    
+
     if (file) {
         const fileSizeMB = file.size / (1024 * 1024);
-        
+
         if (fileSizeMB > 10) {
             alert('File size exceeds 10MB. Please select a smaller file.');
             input.value = '';
@@ -198,12 +211,12 @@ function updateContractorHyperlink(row) {
     const contractorLink = row.querySelector('.contractor-link');
     const attachmentInput = row.querySelector('.attachment-input');
     const file = attachmentInput?.files[0];
-    
+
     if (!contractorInput || !contractorLink) return;
-    
+
     // Get contractor name from input (input is always visible now)
     let contractorName = contractorInput.value.trim();
-    
+
     // Check if file changed - if so, clean up old URL
     const currentFileName = contractorLink.dataset.fileName;
     if (currentFileName && file && file.name !== currentFileName) {
@@ -212,7 +225,7 @@ function updateContractorHyperlink(row) {
             delete contractorLink.dataset.objectUrl;
         }
     }
-    
+
     if (file) {
         // Get or create object URL for the file
         let fileUrl = contractorLink.dataset.objectUrl;
@@ -221,7 +234,7 @@ function updateContractorHyperlink(row) {
             contractorLink.dataset.objectUrl = fileUrl;
             contractorLink.dataset.fileName = file.name;
         }
-        
+
         contractorLink.href = '#';
         contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
         contractorLink.style.display = contractorName ? 'block' : 'none';
@@ -231,24 +244,24 @@ function updateContractorHyperlink(row) {
         contractorLink.style.marginTop = '5px';
         contractorLink.style.fontSize = '12px';
         contractorLink.style.textAlign = 'center';
-        
+
         // Remove existing click listener if any
         contractorLink.replaceWith(contractorLink.cloneNode(true));
         const newLink = row.querySelector('.contractor-link');
-        
+
         // Add click handler to open file visually
-        newLink.addEventListener('click', function(e) {
+        newLink.addEventListener('click', function (e) {
             e.preventDefault();
             const currentFileUrl = newLink.dataset.objectUrl;
             if (currentFileUrl) {
                 openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
             }
         });
-        
+
         // Always sync link text with input value
         newLink.textContent = contractorName || newLink.textContent || 'Contractor';
         newLink.style.display = contractorName ? 'block' : 'none';
-        
+
         // Keep input visible
         contractorInput.style.display = '';
     } else {
@@ -289,10 +302,10 @@ function openFileVisually(fileUrl, fileName, fileType) {
         'text/plain', 'text/html', 'text/css', 'text/javascript',
         'application/json', 'application/xml'
     ];
-    
-    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) || 
-                          displayableTypes.includes(fileType);
-    
+
+    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) ||
+        displayableTypes.includes(fileType);
+
     if (isDisplayable) {
         // Open in new window/tab for inline viewing
         const newWindow = window.open(fileUrl, '_blank');
@@ -323,20 +336,20 @@ async function saveData() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     savedData = [];
-    
+
     rows.forEach((row, index) => {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
         let contractor = '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        
+
         if (contractorInput) {
             contractor = contractorInput.value || '';
         } else if (contractorLink) {
             contractor = contractorLink.textContent || '';
         }
-        
+
         const approvedDate = row.querySelector('.approved-date-input')?.value || '';
         const approvedAmount = row.querySelector('.approved-amount-input')?.value || '';
         const billFrequency = row.querySelector('.bill-frequency-input')?.value || '';
@@ -346,10 +359,10 @@ async function saveData() {
         const paidAmount = row.querySelector('.paid-amount-input')?.value || '';
         const attachmentInput = row.querySelector('.attachment-input');
         const file = attachmentInput?.files[0];
-        
+
         // Update contractor hyperlink if needed
         updateContractorHyperlink(row);
-        
+
         // Store data
         const rowData = {
             sno,
@@ -365,10 +378,10 @@ async function saveData() {
             fileName: file ? file.name : '',
             fileSize: file ? file.size : 0
         };
-        
+
         savedData.push(rowData);
     });
-    
+
     // Save to API or localStorage
     try {
         await saveDataToStorage();
@@ -384,14 +397,14 @@ async function saveDataToStorage() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     const dataToSave = [];
-    
+
     for (const row of rows) {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        const contractor = contractorInput && contractorInput.style.display !== 'none' 
-            ? contractorInput.value 
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
             : (contractorLink?.textContent || '');
         const approvedDate = row.querySelector('.approved-date-input')?.value || '';
         const approvedAmount = row.querySelector('.approved-amount-input')?.value || '';
@@ -402,11 +415,11 @@ async function saveDataToStorage() {
         const paidAmount = row.querySelector('.paid-amount-input')?.value || '';
         const attachmentInput = row.querySelector('.attachment-input');
         const file = attachmentInput?.files[0];
-        
+
         let fileBase64 = '';
         let fileName = '';
         let fileType = '';
-        
+
         if (file) {
             fileName = file.name;
             fileType = file.type;
@@ -416,7 +429,7 @@ async function saveDataToStorage() {
                 console.error('Error converting file to base64:', error);
             }
         }
-        
+
         dataToSave.push({
             sno,
             efile,
@@ -433,7 +446,7 @@ async function saveDataToStorage() {
             fileType
         });
     }
-    
+
     // Try to save to API, fallback to localStorage
     try {
         if (typeof billTrackerAPI !== 'undefined') {
@@ -452,7 +465,7 @@ async function saveDataToStorage() {
 // Load data from API (with localStorage fallback)
 async function loadData() {
     let data = [];
-    
+
     // Try to load from API first
     try {
         if (typeof billTrackerAPI !== 'undefined') {
@@ -479,24 +492,24 @@ async function loadData() {
             }
         }
     }
-    
+
     if (data && data.length > 0) {
         try {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
+
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
                 // Map database field names to frontend field names
                 const snoValue = rowData.sno || rowData.SNO || (index + 1);
                 rowCounter = Math.max(rowCounter, parseInt(snoValue) || index + 1);
-                
+
                 // Create contractor cell with both input and link
                 const contractorValue = rowData.contractor || rowData.CONTRACTOR || '';
                 const fileName = rowData.fileName || rowData.file_name || rowData.FILE_NAME || '';
                 const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
                 const hasFile = fileName && fileBase64;
-                
+
                 row.innerHTML = `
                     <td>
                         <input type="text" class="sno-input" placeholder="Enter S.No" value="${snoValue}">
@@ -545,9 +558,9 @@ async function loadData() {
                         </button>
                     </td>
                 `;
-                
+
                 tbody.appendChild(row);
-                
+
                 // Restore file if it exists
                 if (hasFile && fileBase64) {
                     try {
@@ -556,20 +569,20 @@ async function loadData() {
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
                         fileInput.files = dataTransfer.files;
-                        
+
                         // Update contractor link
                         const contractorLink = row.querySelector('.contractor-link');
                         const fileUrl = URL.createObjectURL(file);
                         contractorLink.href = '#';
                         contractorLink.dataset.objectUrl = fileUrl;
                         contractorLink.dataset.fileName = file.name;
-                        
+
                         // Remove existing click listener if any
                         contractorLink.replaceWith(contractorLink.cloneNode(true));
                         const newLink = row.querySelector('.contractor-link');
-                        
+
                         // Add click handler to open file visually
-                        newLink.addEventListener('click', function(e) {
+                        newLink.addEventListener('click', function (e) {
                             e.preventDefault();
                             openFileVisually(fileUrl, file.name, file.type);
                         });
@@ -577,24 +590,24 @@ async function loadData() {
                         console.error('Error restoring file:', error);
                     }
                 }
-                
+
                 const fileInput = row.querySelector('.attachment-input');
                 const contractorInput = row.querySelector('.contractor-input');
-                
+
                 if (fileInput) {
-                    fileInput.addEventListener('change', function(e) {
+                    fileInput.addEventListener('change', function (e) {
                         validateFileSize(e.target);
                         updateContractorHyperlink(row);
                     });
                 }
-                
+
                 if (contractorInput) {
-                    contractorInput.addEventListener('input', function() {
+                    contractorInput.addEventListener('input', function () {
                         updateContractorHyperlink(row);
                     });
                 }
             });
-            
+
             updateTotalCount();
         } catch (error) {
             console.error('Error loading data:', error);
@@ -618,12 +631,12 @@ function printTable() {
     const printWindow = window.open('', '_blank');
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
+
     if (rows.length === 0) {
         alert('No data to print!');
         return;
     }
-    
+
     let tableHTML = `
         <!DOCTYPE html>
         <html>
@@ -679,7 +692,7 @@ function printTable() {
                 </thead>
                 <tbody>
     `;
-    
+
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
@@ -694,7 +707,7 @@ function printTable() {
         const billPaidDate = row.querySelector('.bill-paid-date-input')?.value || '';
         const paidAmount = row.querySelector('.paid-amount-input')?.value || '';
         const fileName = row.querySelector('.file-name')?.textContent.trim() || '';
-        
+
         tableHTML += `
             <tr>
                 <td>${sno}</td>
@@ -711,14 +724,14 @@ function printTable() {
             </tr>
         `;
     });
-    
+
     tableHTML += `
                 </tbody>
             </table>
         </body>
         </html>
     `;
-    
+
     printWindow.document.write(tableHTML);
     printWindow.document.close();
     printWindow.focus();
@@ -731,15 +744,15 @@ function printTable() {
 function exportToExcel() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
+
     if (rows.length === 0) {
         alert('No data to export!');
         return;
     }
-    
+
     // Prepare data for export
     const exportData = [];
-    
+
     // Add headers
     exportData.push([
         'S.NO',
@@ -754,7 +767,7 @@ function exportToExcel() {
         'Paid Amount',
         'Attachment File Name'
     ]);
-    
+
     // Add rows
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
@@ -770,7 +783,7 @@ function exportToExcel() {
         const billPaidDate = row.querySelector('.bill-paid-date-input')?.value || '';
         const paidAmount = row.querySelector('.paid-amount-input')?.value || '';
         const fileName = row.querySelector('.file-name')?.textContent.trim() || '';
-        
+
         exportData.push([
             sno,
             efile,
@@ -785,11 +798,11 @@ function exportToExcel() {
             fileName
         ]);
     });
-    
+
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(exportData);
-    
+
     // Set column widths
     ws['!cols'] = [
         { wch: 10 }, // S.NO
@@ -804,12 +817,12 @@ function exportToExcel() {
         { wch: 15 }, // Paid Amount
         { wch: 30 }  // Attachment
     ];
-    
+
     XLSX.utils.book_append_sheet(wb, ws, 'Bill Tracker');
-    
+
     // Generate filename with timestamp
     const filename = `bill_tracker_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-    
+
     // Save file
     XLSX.writeFile(wb, filename);
 }
@@ -827,7 +840,7 @@ function filterTable(searchQuery) {
     const rows = tbody.querySelectorAll('tr');
     const query = searchQuery.toLowerCase().trim();
     let visibleCount = 0;
-    
+
     if (query === '') {
         // Show all rows if search is empty
         rows.forEach(row => {
@@ -841,13 +854,13 @@ function filterTable(searchQuery) {
         }
         return;
     }
-    
+
     rows.forEach(row => {
         // Skip the no-results row
         if (row.classList.contains('no-results-row')) {
             return;
         }
-        
+
         // Get all text content from the row
         const sno = row.querySelector('.sno-input')?.value.toLowerCase() || '';
         const efile = row.querySelector('.efile-input')?.value.toLowerCase() || '';
@@ -861,19 +874,19 @@ function filterTable(searchQuery) {
         const billDueDate = row.querySelector('.bill-due-date-input')?.value.toLowerCase() || '';
         const billPaidDate = row.querySelector('.bill-paid-date-input')?.value.toLowerCase() || '';
         const paidAmount = row.querySelector('.paid-amount-input')?.value.toLowerCase() || '';
-        
+
         // Check if any field matches the search query
-        const matches = sno.includes(query) || 
-                       efile.includes(query) || 
-                       contractor.includes(query) || 
-                       approvedDate.includes(query) || 
-                       approvedAmount.includes(query) || 
-                       billFrequency.includes(query) || 
-                       billDate.includes(query) || 
-                       billDueDate.includes(query) || 
-                       billPaidDate.includes(query) || 
-                       paidAmount.includes(query);
-        
+        const matches = sno.includes(query) ||
+            efile.includes(query) ||
+            contractor.includes(query) ||
+            approvedDate.includes(query) ||
+            approvedAmount.includes(query) ||
+            billFrequency.includes(query) ||
+            billDate.includes(query) ||
+            billDueDate.includes(query) ||
+            billPaidDate.includes(query) ||
+            paidAmount.includes(query);
+
         if (matches) {
             row.style.display = '';
             visibleCount++;
@@ -881,13 +894,13 @@ function filterTable(searchQuery) {
             row.style.display = 'none';
         }
     });
-    
+
     // Remove existing "no results" message
     const existingNoResults = tbody.querySelector('.no-results-row');
     if (existingNoResults) {
         existingNoResults.remove();
     }
-    
+
     // Show "no results" message if no rows are visible
     if (visibleCount === 0) {
         const noResultsRow = document.createElement('tr');
@@ -900,13 +913,13 @@ function filterTable(searchQuery) {
         `;
         tbody.appendChild(noResultsRow);
     }
-    
+
     // Update total count badge to show filtered count
     document.getElementById('totalBadge').textContent = `Total: ${visibleCount}`;
 }
 
 // Auto-save on input change (optional - saves to localStorage)
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (e.target.matches('.sno-input, .efile-input, .contractor-input, .approved-date-input, .approved-amount-input, .bill-frequency-input, .bill-date-input, .bill-due-date-input, .bill-paid-date-input, .paid-amount-input')) {
         // Debounce auto-save
         clearTimeout(window.autoSaveTimeout);
@@ -917,7 +930,7 @@ document.addEventListener('input', function(e) {
 });
 
 // Auto-save on file change
-document.addEventListener('change', function(e) {
+document.addEventListener('change', function (e) {
     if (e.target.matches('.attachment-input')) {
         // Debounce auto-save
         clearTimeout(window.autoSaveTimeout);

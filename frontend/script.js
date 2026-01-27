@@ -4,12 +4,12 @@ let savedData = [];
 const STORAGE_KEY = 'dashboardData';
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadData();
     setupEventListeners();
     updateTotalCount();
     setupMobileMenu();
-    
+
     // Check for duration warnings after data loads
     setTimeout(() => {
         checkAllDurations();
@@ -23,65 +23,79 @@ function setupEventListeners() {
     document.getElementById('refreshBtn').addEventListener('click', refreshPage);
     document.getElementById('printBtn').addEventListener('click', printTable);
     document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-    
+
     // Search functionality
     const searchInput = document.querySelector('.search-input');
     if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
+        searchInput.addEventListener('input', function (e) {
             filterTable(e.target.value);
         });
     }
-    
+
     // Notification bell button - open notification modal
     const notificationBellBtn = document.getElementById('notificationBellBtn');
     if (notificationBellBtn) {
-        notificationBellBtn.addEventListener('click', function() {
+        notificationBellBtn.addEventListener('click', function () {
             openNotificationModal();
         });
     }
-    
+
     // Notification close button
     const closeNotificationBtn = document.getElementById('closeNotification');
     if (closeNotificationBtn) {
         closeNotificationBtn.addEventListener('click', closeNotification);
     }
-    
+
     // Close notification on overlay click
     const notificationModal = document.getElementById('notificationModal');
     if (notificationModal) {
-        notificationModal.addEventListener('click', function(e) {
+        notificationModal.addEventListener('click', function (e) {
             if (e.target === notificationModal) {
                 closeNotification();
             }
         });
     }
-    
+
     // Close notification on Escape key
-    document.addEventListener('keydown', function(e) {
+    // Close notification on Escape key
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeNotification();
         }
     });
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+            const user = Auth.getUser();
+            if (user) {
+                const currentTheme = user.theme || 'light';
+                const newTheme = (currentTheme === 'light') ? 'dark' : 'light';
+                Auth.updateTheme(newTheme);
+            }
+        });
+    }
 }
 
 // Mobile menu functionality
 function setupMobileMenu() {
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const sidebar = document.getElementById('sidebar');
-    
+
     // Create overlay element
     const overlay = document.createElement('div');
     overlay.className = 'mobile-overlay';
     document.body.appendChild(overlay);
-    
+
     if (mobileMenuToggle && sidebar) {
         // Toggle menu
-        mobileMenuToggle.addEventListener('click', function(e) {
+        mobileMenuToggle.addEventListener('click', function (e) {
             e.stopPropagation();
             sidebar.classList.toggle('mobile-open');
             mobileMenuToggle.classList.toggle('active');
             overlay.classList.toggle('active');
-            
+
             // Change icon
             const icon = mobileMenuToggle.querySelector('i');
             if (sidebar.classList.contains('mobile-open')) {
@@ -92,9 +106,9 @@ function setupMobileMenu() {
                 document.body.style.overflow = '';
             }
         });
-        
+
         // Close menu when clicking overlay
-        overlay.addEventListener('click', function() {
+        overlay.addEventListener('click', function () {
             sidebar.classList.remove('mobile-open');
             mobileMenuToggle.classList.remove('active');
             overlay.classList.remove('active');
@@ -102,11 +116,11 @@ function setupMobileMenu() {
             icon.className = 'fas fa-bars';
             document.body.style.overflow = '';
         });
-        
+
         // Close sidebar when clicking a nav item on mobile
         const navItems = sidebar.querySelectorAll('.nav-item');
         navItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 if (window.innerWidth <= 768) {
                     sidebar.classList.remove('mobile-open');
                     mobileMenuToggle.classList.remove('active');
@@ -117,9 +131,9 @@ function setupMobileMenu() {
                 }
             });
         });
-        
+
         // Handle window resize
-        window.addEventListener('resize', function() {
+        window.addEventListener('resize', function () {
             if (window.innerWidth > 768) {
                 sidebar.classList.remove('mobile-open');
                 mobileMenuToggle.classList.remove('active');
@@ -147,7 +161,7 @@ function addRow() {
     const tbody = document.getElementById('tableBody');
     const row = document.createElement('tr');
     rowCounter++;
-    
+
     row.innerHTML = `
         <td>
             <input type="text" class="sno-input" placeholder="Enter S.No" value="${rowCounter}">
@@ -163,14 +177,14 @@ function addRow() {
             <input type="text" class="description-input" placeholder="Enter Description">
         </td>
         <td>
+            <input type="text" class="value-input" placeholder="Enter Value">
+        </td>
+        <td>
             <select class="gst-select">
                 <option value="">Select GST</option>
                 <option value="with gst">With GST</option>
                 <option value="without gst">Without GST</option>
             </select>
-        </td>
-        <td>
-            <input type="text" class="value-input" placeholder="Enter Value">
         </td>
         <td>
             <input type="date" class="start-date-input">
@@ -191,29 +205,29 @@ function addRow() {
             </button>
         </td>
     `;
-    
+
     tbody.appendChild(row);
-    
+
     // Add event listeners for date calculation
     const startDateInput = row.querySelector('.start-date-input');
     const endDateInput = row.querySelector('.end-date-input');
-    
+
     startDateInput.addEventListener('change', calculateDuration);
     endDateInput.addEventListener('change', calculateDuration);
-    
+
     // Add file size validation
     const fileInput = row.querySelector('.attachment-input');
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', function (e) {
         validateFileSize(e.target);
         updateContractorHyperlink(row);
     });
-    
+
     // Setup contractor input listener
     const contractorInput = row.querySelector('.contractor-input');
-    contractorInput.addEventListener('input', function() {
+    contractorInput.addEventListener('input', function () {
         updateContractorHyperlink(row);
     });
-    
+
     updateTotalCount();
 }
 
@@ -224,33 +238,36 @@ function calculateDuration(event) {
     const endDateInput = row.querySelector('.end-date-input');
     const durationDisplay = row.querySelector('.duration-display');
     const durationCell = durationDisplay.parentElement;
-    
+
     if (startDateInput.value && endDateInput.value) {
         const startDate = new Date(startDateInput.value);
         const endDate = new Date(endDateInput.value);
-        
+
         if (endDate >= startDate) {
             const diffTime = endDate - startDate;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+
             durationDisplay.textContent = `${diffDays} days left`;
-            durationCell.classList.remove('warning');
-            
+            durationDisplay.classList.remove('duration-left', 'duration-safe');
+
             // Color coding: red if <= 60 days
             if (diffDays <= 60) {
-                durationCell.classList.add('warning');
+                durationDisplay.classList.add('duration-left');
                 // Show notification pop-up
                 showDurationNotification(row, diffDays);
+            } else {
+                durationDisplay.classList.add('duration-safe');
             }
         } else {
             durationDisplay.textContent = 'Invalid dates';
-            durationCell.classList.add('warning');
+            durationDisplay.classList.remove('duration-safe');
+            durationDisplay.classList.add('duration-left');
         }
     } else {
         durationDisplay.textContent = '-';
-        durationCell.classList.remove('warning');
+        durationDisplay.classList.remove('duration-left', 'duration-safe');
     }
-    
+
     // Auto-save after calculation
     saveDataToStorage();
     // Update notification badge
@@ -269,7 +286,7 @@ function showDurationNotification(row, days) {
     const value = row.querySelector('.value-input')?.value || '';
     const startDate = row.querySelector('.start-date-input')?.value || '';
     const endDate = row.querySelector('.end-date-input')?.value || '';
-    
+
     // Create notification item
     const notificationItem = `
         <div class="notification-item">
@@ -313,7 +330,7 @@ function showDurationNotification(row, days) {
             </div>
         </div>
     `;
-    
+
     // Get or create notification modal
     let modal = document.getElementById('notificationModal');
     if (!modal) {
@@ -333,27 +350,27 @@ function showDurationNotification(row, days) {
             </div>
         `;
         document.body.appendChild(modal);
-        
+
         // Add close button event
         const closeBtn = modal.querySelector('#closeNotification');
         if (closeBtn) {
             closeBtn.addEventListener('click', closeNotification);
         }
-        
+
         // Close on overlay click
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === modal) {
                 closeNotification();
             }
         });
     }
-    
+
     const notificationBody = document.getElementById('notificationBody');
     if (notificationBody) {
         // Check if this notification already exists (avoid duplicates)
         const existingNotifications = notificationBody.querySelectorAll('.notification-item');
         let isDuplicate = false;
-        
+
         existingNotifications.forEach(item => {
             // Find S.NO in the notification item
             const details = item.querySelectorAll('.notification-item-details div');
@@ -367,12 +384,12 @@ function showDurationNotification(row, days) {
                 }
             });
         });
-        
+
         if (!isDuplicate) {
             // Add new notification
             notificationBody.insertAdjacentHTML('afterbegin', notificationItem);
         }
-        
+
         // Show modal
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -388,12 +405,12 @@ function openNotificationModal() {
         showNotificationMessage('This feature is available on the Contractor List page.');
         return;
     }
-    
+
     // First, check all rows for duration warnings
     checkAllDurations();
     // Update badge to reflect current warnings
     updateNotificationCount();
-    
+
     // Get or create notification modal
     let modal = document.getElementById('notificationModal');
     if (!modal) {
@@ -413,23 +430,23 @@ function openNotificationModal() {
             </div>
         `;
         document.body.appendChild(modal);
-        
+
         // Add close button event
         const closeBtn = modal.querySelector('#closeNotification');
         if (closeBtn) {
             closeBtn.addEventListener('click', closeNotification);
         }
-        
+
         // Close on overlay click
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === modal) {
                 closeNotification();
             }
         });
     }
-    
+
     const notificationBody = document.getElementById('notificationBody');
-    
+
     // If no warnings found, show empty message
     if (!notificationBody || notificationBody.children.length === 0) {
         if (notificationBody) {
@@ -442,7 +459,7 @@ function openNotificationModal() {
             `;
         }
     }
-    
+
     // Show modal
     if (modal) {
         modal.classList.add('active');
@@ -459,7 +476,7 @@ function showNotificationMessage(message) {
         modal.id = 'notificationModal';
         document.body.appendChild(modal);
     }
-    
+
     modal.innerHTML = `
         <div class="notification-content">
             <div class="notification-header">
@@ -476,20 +493,20 @@ function showNotificationMessage(message) {
             </div>
         </div>
     `;
-    
+
     // Add close button event
     const closeBtn = modal.querySelector('#closeNotification');
     if (closeBtn) {
         closeBtn.addEventListener('click', closeNotification);
     }
-    
+
     // Close on overlay click
-    modal.addEventListener('click', function(e) {
+    modal.addEventListener('click', function (e) {
         if (e.target === modal) {
             closeNotification();
         }
     });
-    
+
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -560,21 +577,21 @@ function getWarningCount() {
 function checkAllDurations() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    
+
     const rows = tbody.querySelectorAll('tr');
     rows.forEach(row => {
         const startDateInput = row.querySelector('.start-date-input');
         const endDateInput = row.querySelector('.end-date-input');
         const durationDisplay = row.querySelector('.duration-display');
-        
+
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
             const startDate = new Date(startDateInput.value);
             const endDate = new Date(endDateInput.value);
-            
+
             if (endDate >= startDate) {
                 const diffTime = endDate - startDate;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 if (diffDays <= 60 && durationDisplay) {
                     // Show notification for this row
                     showDurationNotification(row, diffDays);
@@ -590,10 +607,10 @@ function checkAllDurations() {
 function validateFileSize(input) {
     const file = input.files[0];
     const fileNameSpan = input.parentElement.querySelector('.file-name');
-    
+
     if (file) {
         const fileSizeMB = file.size / (1024 * 1024);
-        
+
         if (fileSizeMB > 10) {
             alert('File size exceeds 10MB. Please select a smaller file.');
             input.value = '';
@@ -615,12 +632,12 @@ function updateContractorHyperlink(row) {
     const contractorLink = row.querySelector('.contractor-link');
     const attachmentInput = row.querySelector('.attachment-input');
     const file = attachmentInput?.files[0];
-    
+
     if (!contractorInput || !contractorLink) return;
-    
+
     // Get contractor name from input (input is always visible now)
     let contractorName = contractorInput.value.trim();
-    
+
     // Check if file changed - if so, clean up old URL
     const currentFileName = contractorLink.dataset.fileName;
     if (currentFileName && file && file.name !== currentFileName) {
@@ -629,7 +646,7 @@ function updateContractorHyperlink(row) {
             delete contractorLink.dataset.objectUrl;
         }
     }
-    
+
     if (file) {
         // Get or create object URL for the file
         let fileUrl = contractorLink.dataset.objectUrl;
@@ -638,7 +655,7 @@ function updateContractorHyperlink(row) {
             contractorLink.dataset.objectUrl = fileUrl;
             contractorLink.dataset.fileName = file.name;
         }
-        
+
         contractorLink.href = '#';
         contractorLink.textContent = contractorName || contractorLink.textContent || 'Contractor';
         contractorLink.style.display = contractorName ? 'block' : 'none';
@@ -648,24 +665,24 @@ function updateContractorHyperlink(row) {
         contractorLink.style.marginTop = '5px';
         contractorLink.style.fontSize = '12px';
         contractorLink.style.textAlign = 'center';
-        
+
         // Remove existing click listener if any
         contractorLink.replaceWith(contractorLink.cloneNode(true));
         const newLink = row.querySelector('.contractor-link');
-        
+
         // Add click handler to open file visually
-        newLink.addEventListener('click', function(e) {
+        newLink.addEventListener('click', function (e) {
             e.preventDefault();
             const currentFileUrl = newLink.dataset.objectUrl;
             if (currentFileUrl) {
                 openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
             }
         });
-        
+
         // Always sync link text with input value
         newLink.textContent = contractorName || newLink.textContent || 'Contractor';
         newLink.style.display = contractorName ? 'block' : 'none';
-        
+
         // Keep input visible
         contractorInput.style.display = '';
     } else {
@@ -706,10 +723,10 @@ function openFileVisually(fileUrl, fileName, fileType) {
         'text/plain', 'text/html', 'text/css', 'text/javascript',
         'application/json', 'application/xml'
     ];
-    
-    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) || 
-                          displayableTypes.includes(fileType);
-    
+
+    const isDisplayable = displayableTypes.some(type => fileType && fileType.includes(type.split('/')[1])) ||
+        displayableTypes.includes(fileType);
+
     if (isDisplayable) {
         // Open in new window/tab for inline viewing
         const newWindow = window.open(fileUrl, '_blank');
@@ -740,20 +757,20 @@ async function saveData() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     savedData = [];
-    
+
     rows.forEach((row, index) => {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
         let contractor = '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        
+
         if (contractorInput) {
             contractor = contractorInput.value || '';
         } else if (contractorLink) {
             contractor = contractorLink.textContent || '';
         }
-        
+
         const description = row.querySelector('.description-input')?.value || '';
         const gst = row.querySelector('.gst-select')?.value || '';
         const value = row.querySelector('.value-input')?.value || '';
@@ -761,10 +778,10 @@ async function saveData() {
         const endDate = row.querySelector('.end-date-input')?.value || '';
         const attachmentInput = row.querySelector('.attachment-input');
         const file = attachmentInput?.files[0];
-        
+
         // Update contractor hyperlink if needed
         updateContractorHyperlink(row);
-        
+
         // Store data
         const rowData = {
             sno,
@@ -779,10 +796,10 @@ async function saveData() {
             fileName: file ? file.name : '',
             fileSize: file ? file.size : 0
         };
-        
+
         savedData.push(rowData);
     });
-    
+
     // Save to API or localStorage
     try {
         await saveDataToStorage();
@@ -798,14 +815,14 @@ async function saveDataToStorage() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     const dataToSave = [];
-    
+
     for (const row of rows) {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
         const contractorInput = row.querySelector('.contractor-input');
         const contractorLink = row.querySelector('.contractor-link');
-        const contractor = contractorInput && contractorInput.style.display !== 'none' 
-            ? contractorInput.value 
+        const contractor = contractorInput && contractorInput.style.display !== 'none'
+            ? contractorInput.value
             : (contractorLink?.textContent || '');
         const description = row.querySelector('.description-input')?.value || '';
         const gst = row.querySelector('.gst-select')?.value || '';
@@ -815,11 +832,11 @@ async function saveDataToStorage() {
         const duration = row.querySelector('.duration-display')?.textContent || '-';
         const attachmentInput = row.querySelector('.attachment-input');
         const file = attachmentInput?.files[0];
-        
+
         let fileBase64 = '';
         let fileName = '';
         let fileType = '';
-        
+
         if (file) {
             fileName = file.name;
             fileType = file.type;
@@ -829,7 +846,7 @@ async function saveDataToStorage() {
                 console.error('Error converting file to base64:', error);
             }
         }
-        
+
         dataToSave.push({
             sno,
             efile,
@@ -845,7 +862,7 @@ async function saveDataToStorage() {
             fileType
         });
     }
-    
+
     // Try to save to API, fallback to localStorage
     try {
         if (typeof contractorListAPI !== 'undefined') {
@@ -864,7 +881,7 @@ async function saveDataToStorage() {
 // Load data from API (with localStorage fallback)
 async function loadData() {
     let data = [];
-    
+
     // Try to load from API first
     try {
         if (typeof contractorListAPI !== 'undefined') {
@@ -891,18 +908,18 @@ async function loadData() {
             }
         }
     }
-    
+
     if (data && data.length > 0) {
         try {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
+
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
                 // Map database field names to frontend field names
                 const snoValue = rowData.sno || rowData.SNO || (index + 1);
                 rowCounter = Math.max(rowCounter, parseInt(snoValue) || index + 1);
-                
+
                 // Extract days from duration string for color coding
                 let isWarning = false;
                 const duration = rowData.duration || rowData.DURATION || '';
@@ -913,13 +930,13 @@ async function loadData() {
                         isWarning = days <= 60;
                     }
                 }
-                
+
                 // Create contractor cell with both input and link
                 const contractorValue = rowData.contractor || rowData.CONTRACTOR || '';
                 const fileName = rowData.fileName || rowData.file_name || rowData.FILE_NAME || '';
                 const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
                 const hasFile = fileName && fileBase64;
-                
+
                 row.innerHTML = `
                     <td>
                         <input type="text" class="sno-input" placeholder="Enter S.No" value="${snoValue}">
@@ -935,6 +952,9 @@ async function loadData() {
                         <input type="text" class="description-input" placeholder="Enter Description" value="${rowData.description || rowData.DESCRIPTION || ''}">
                     </td>
                     <td>
+                        <input type="text" class="value-input" placeholder="Enter Value" value="${rowData.value || rowData.VALUE || ''}">
+                    </td>
+                    <td>
                         <select class="gst-select">
                             <option value="">Select GST</option>
                             <option value="with gst" ${rowData.gst === 'with gst' ? 'selected' : ''}>With GST</option>
@@ -942,16 +962,13 @@ async function loadData() {
                         </select>
                     </td>
                     <td>
-                        <input type="text" class="value-input" placeholder="Enter Value" value="${rowData.value || rowData.VALUE || ''}">
-                    </td>
-                    <td>
                         <input type="date" class="start-date-input" value="${rowData.startDate || rowData.start_date || rowData.START_DATE || ''}">
                     </td>
                     <td>
                         <input type="date" class="end-date-input" value="${rowData.endDate || rowData.end_date || rowData.END_DATE || ''}">
                     </td>
-                    <td class="duration-cell ${isWarning ? 'warning' : ''}">
-                        <span class="duration-display">${duration || '-'}</span>
+                    <td class="duration-cell">
+                        <span class="duration-display ${isWarning ? 'duration-left' : 'duration-safe'}">${duration || '-'}</span>
                     </td>
                     <td>
                         <input type="file" class="attachment-input" accept="*/*">
@@ -963,9 +980,9 @@ async function loadData() {
                         </button>
                     </td>
                 `;
-                
+
                 tbody.appendChild(row);
-                
+
                 // Restore file if it exists
                 if (hasFile && fileBase64) {
                     try {
@@ -974,20 +991,20 @@ async function loadData() {
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
                         fileInput.files = dataTransfer.files;
-                        
+
                         // Update contractor link
                         const contractorLink = row.querySelector('.contractor-link');
                         const fileUrl = URL.createObjectURL(file);
                         contractorLink.href = '#';
                         contractorLink.dataset.objectUrl = fileUrl;
                         contractorLink.dataset.fileName = file.name;
-                        
+
                         // Remove existing click listener if any
                         contractorLink.replaceWith(contractorLink.cloneNode(true));
                         const newLink = row.querySelector('.contractor-link');
-                        
+
                         // Add click handler to open file visually
-                        newLink.addEventListener('click', function(e) {
+                        newLink.addEventListener('click', function (e) {
                             e.preventDefault();
                             openFileVisually(fileUrl, file.name, file.type);
                         });
@@ -995,35 +1012,35 @@ async function loadData() {
                         console.error('Error restoring file:', error);
                     }
                 }
-                
+
                 // Add event listeners
                 const startDateInput = row.querySelector('.start-date-input');
                 const endDateInput = row.querySelector('.end-date-input');
-                
+
                 if (startDateInput && endDateInput) {
                     startDateInput.addEventListener('change', calculateDuration);
                     endDateInput.addEventListener('change', calculateDuration);
                 }
-                
+
                 const fileInput = row.querySelector('.attachment-input');
                 const contractorInput = row.querySelector('.contractor-input');
-                
+
                 if (fileInput) {
-                    fileInput.addEventListener('change', function(e) {
+                    fileInput.addEventListener('change', function (e) {
                         validateFileSize(e.target);
                         updateContractorHyperlink(row);
                     });
                 }
-                
+
                 if (contractorInput) {
-                    contractorInput.addEventListener('input', function() {
+                    contractorInput.addEventListener('input', function () {
                         updateContractorHyperlink(row);
                     });
                 }
             });
-            
+
             updateTotalCount();
-            
+
             // Check for duration warnings after loading
             setTimeout(() => {
                 checkAllDurations();
@@ -1050,12 +1067,12 @@ function printTable() {
     const printWindow = window.open('', '_blank');
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
+
     if (rows.length === 0) {
         alert('No data to print!');
         return;
     }
-    
+
     let tableHTML = `
         <!DOCTYPE html>
         <html>
@@ -1113,7 +1130,7 @@ function printTable() {
                 </thead>
                 <tbody>
     `;
-    
+
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
         const efile = row.querySelector('.efile-input')?.value || '';
@@ -1128,7 +1145,7 @@ function printTable() {
         const duration = row.querySelector('.duration-display')?.textContent || '-';
         const fileName = row.querySelector('.file-name')?.textContent.trim() || '';
         const isWarning = row.querySelector('.duration-cell')?.classList.contains('warning');
-        
+
         tableHTML += `
             <tr>
                 <td>${sno}</td>
@@ -1144,14 +1161,14 @@ function printTable() {
             </tr>
         `;
     });
-    
+
     tableHTML += `
                 </tbody>
             </table>
         </body>
         </html>
     `;
-    
+
     printWindow.document.write(tableHTML);
     printWindow.document.close();
     printWindow.focus();
@@ -1164,15 +1181,15 @@ function printTable() {
 function exportToExcel() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
+
     if (rows.length === 0) {
         alert('No data to export!');
         return;
     }
-    
+
     // Prepare data for export
     const exportData = [];
-    
+
     // Add headers
     exportData.push([
         'S.NO',
@@ -1186,7 +1203,7 @@ function exportToExcel() {
         'Duration (Days)',
         'Attachment File Name'
     ]);
-    
+
     // Add rows
     rows.forEach(row => {
         const sno = row.querySelector('.sno-input')?.value || '';
@@ -1201,7 +1218,7 @@ function exportToExcel() {
         const endDate = row.querySelector('.end-date-input')?.value || '';
         const duration = row.querySelector('.duration-display')?.textContent || '-';
         const fileName = row.querySelector('.file-name')?.textContent.trim() || '';
-        
+
         exportData.push([
             sno,
             efile,
@@ -1215,11 +1232,11 @@ function exportToExcel() {
             fileName
         ]);
     });
-    
+
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(exportData);
-    
+
     // Set column widths
     ws['!cols'] = [
         { wch: 10 }, // S.NO
@@ -1233,12 +1250,12 @@ function exportToExcel() {
         { wch: 20 }, // Duration
         { wch: 30 }  // Attachment
     ];
-    
+
     XLSX.utils.book_append_sheet(wb, ws, 'Data Table');
-    
+
     // Generate filename with timestamp
     const filename = `dashboard_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-    
+
     // Save file
     XLSX.writeFile(wb, filename);
 }
@@ -1256,7 +1273,7 @@ function filterTable(searchQuery) {
     const rows = tbody.querySelectorAll('tr');
     const query = searchQuery.toLowerCase().trim();
     let visibleCount = 0;
-    
+
     if (query === '') {
         // Show all rows if search is empty
         rows.forEach(row => {
@@ -1270,13 +1287,13 @@ function filterTable(searchQuery) {
         }
         return;
     }
-    
+
     rows.forEach(row => {
         // Skip the no-results row
         if (row.classList.contains('no-results-row')) {
             return;
         }
-        
+
         // Get all text content from the row
         const sno = row.querySelector('.sno-input')?.value.toLowerCase() || '';
         const efile = row.querySelector('.efile-input')?.value.toLowerCase() || '';
@@ -1289,18 +1306,18 @@ function filterTable(searchQuery) {
         const startDate = row.querySelector('.start-date-input')?.value.toLowerCase() || '';
         const endDate = row.querySelector('.end-date-input')?.value.toLowerCase() || '';
         const duration = row.querySelector('.duration-display')?.textContent.toLowerCase() || '';
-        
+
         // Check if any field matches the search query
-        const matches = sno.includes(query) || 
-                       efile.includes(query) || 
-                       contractor.includes(query) || 
-                       description.includes(query) || 
-                       gst.includes(query) ||
-                       value.includes(query) || 
-                       startDate.includes(query) || 
-                       endDate.includes(query) || 
-                       duration.includes(query);
-        
+        const matches = sno.includes(query) ||
+            efile.includes(query) ||
+            contractor.includes(query) ||
+            description.includes(query) ||
+            gst.includes(query) ||
+            value.includes(query) ||
+            startDate.includes(query) ||
+            endDate.includes(query) ||
+            duration.includes(query);
+
         if (matches) {
             row.style.display = '';
             visibleCount++;
@@ -1308,13 +1325,13 @@ function filterTable(searchQuery) {
             row.style.display = 'none';
         }
     });
-    
+
     // Remove existing "no results" message
     const existingNoResults = tbody.querySelector('.no-results-row');
     if (existingNoResults) {
         existingNoResults.remove();
     }
-    
+
     // Show "no results" message if no rows are visible
     if (visibleCount === 0) {
         const noResultsRow = document.createElement('tr');
@@ -1327,13 +1344,13 @@ function filterTable(searchQuery) {
         `;
         tbody.appendChild(noResultsRow);
     }
-    
+
     // Update total count badge to show filtered count
     document.getElementById('totalBadge').textContent = `Total: ${visibleCount}`;
 }
 
 // Auto-save on input change (optional - saves to localStorage)
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (e.target.matches('.sno-input, .efile-input, .contractor-input, .description-input, .value-input, .start-date-input, .end-date-input')) {
         // Debounce auto-save
         clearTimeout(window.autoSaveTimeout);
@@ -1344,7 +1361,7 @@ document.addEventListener('input', function(e) {
 });
 
 // Auto-save on file change
-document.addEventListener('change', function(e) {
+document.addEventListener('change', function (e) {
     if (e.target.matches('.attachment-input')) {
         // Debounce auto-save
         clearTimeout(window.autoSaveTimeout);

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,14 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="epbg-page">
     <div class="dashboard-container">
         <!-- Mobile Menu Toggle -->
         <button class="mobile-menu-toggle" id="mobileMenuToggle">
             <i class="fas fa-bars"></i>
         </button>
-        
+
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -40,6 +42,10 @@
                     <i class="fas fa-shield-alt"></i>
                     <span>EPBG's</span>
                 </a>
+                <a href="#" class="nav-item logout-item" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </nav>
         </aside>
 
@@ -52,6 +58,9 @@
                     <p class="welcome-text">Manage EPBG details and attachments.</p>
                 </div>
                 <div class="header-right">
+                    <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
                     <div class="search-container">
                         <i class="fas fa-search search-icon"></i>
                         <input type="text" class="search-input" placeholder="Search...">
@@ -60,11 +69,11 @@
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge" id="notificationBadge">0</span>
                     </button>
-                    <div class="profile-section">
-                        <div class="profile-avatar">PK</div>
+                    <div class="profile-section" id="profileSection">
+                        <div class="profile-avatar" id="userAvatar">U</div>
                         <div class="profile-info">
-                            <div class="profile-name">Praveen Kumar</div>
-                            <div class="profile-role">Joint General Manager</div>
+                            <div class="profile-name" id="userName">Loading...</div>
+                            <div class="profile-role" id="userRole">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -77,7 +86,7 @@
                         <h2 class="card-title">EPBG Details</h2>
                         <span class="total-badge" id="totalBadge">Total: 0</span>
                     </div>
-                    
+
                     <div class="action-buttons">
                         <button class="action-btn" id="saveBtn">
                             <i class="fas fa-save"></i>
@@ -132,9 +141,29 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="auth.js"></script>
     <script src="api.js"></script>
     <script src="epbg.js"></script>
+    <script>
+        // Check authentication on page load
+        (async function () {
+            const user = await Auth.checkAuth();
+            if (user) {
+                // Update UI with user info
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+                document.getElementById('userAvatar').textContent = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            }
+        })();
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to logout?')) {
+                Auth.logout();
+            }
+        });
+    </script>
 </body>
+
 </html>
-
-
