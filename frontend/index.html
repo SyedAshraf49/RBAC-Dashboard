@@ -12,19 +12,20 @@
 <body>
     <div class="dashboard-container">
         <!-- Mobile Menu Toggle -->
-        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
             <i class="fas fa-bars"></i>
         </button>
+        
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+
 
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-grid">
-                        <div class="logo-square"></div>
-                        <div class="logo-square"></div>
-                        <div class="logo-square"></div>
-                        <div class="logo-square"></div>
+                        <img src="CMRL.png" class="logo-image">
                     </div>
                     <span class="logo-text">Data Dashboard</span>
                 </div>
@@ -42,10 +43,7 @@
                     <i class="fas fa-shield-alt"></i>
                     <span>EPBG's</span>
                 </a>
-                <a href="#" class="nav-item logout-item" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+
             </nav>
         </aside>
 
@@ -69,11 +67,29 @@
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge" id="notificationBadge">0</span>
                     </button>
-                    <div class="profile-section" id="profileSection">
-                        <div class="profile-avatar" id="userAvatar">U</div>
-                        <div class="profile-info">
-                            <div class="profile-name" id="userName">Loading...</div>
-                            <div class="profile-role" id="userRole">Loading...</div>
+                    <div class="profile-dropdown-wrapper">
+                        <button class="profile-trigger" id="profileTrigger">
+                            <div class="profile-avatar" id="userAvatar">U</div>
+                            <i class="fas fa-chevron-down profile-arrow"></i>
+                        </button>
+                        <div class="profile-dropdown" id="profileDropdown">
+                            <div class="profile-dropdown-header">
+                                <div class="profile-avatar-large" id="userAvatarLarge">U</div>
+                                <div class="profile-dropdown-info">
+                                    <div class="profile-dropdown-name" id="userNameDropdown">Loading...</div>
+                                    <div class="profile-dropdown-role" id="userRoleDropdown">Loading...</div>
+                                </div>
+                            </div>
+                            <div class="profile-dropdown-divider"></div>
+                            <a href="#" class="profile-dropdown-item" id="helpMenuItem">
+                                <i class="fas fa-question-circle"></i>
+                                <span>Help & Support</span>
+                            </a>
+                            <div class="profile-dropdown-divider"></div>
+                            <a href="#" class="profile-dropdown-item logout-item" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Logout</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -155,6 +171,80 @@
         </div>
     </div>
 
+    <!-- Language Selection Modal -->
+    <div class="modal-overlay" id="languageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-globe"></i> Select Language</h3>
+                <button class="modal-close" id="closeLanguageModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="language-options">
+                    <button class="language-option active" data-lang="en">
+                        <i class="fas fa-check-circle"></i>
+                        <span>English</span>
+                    </button>
+                    <button class="language-option" data-lang="ta">
+                        <i class="far fa-circle"></i>
+                        <span>தமிழ் (Tamil)</span>
+                    </button>
+                    <button class="language-option" data-lang="fr">
+                        <i class="far fa-circle"></i>
+                        <span>Français (French)</span>
+                    </button>
+                    <button class="language-option" data-lang="hi">
+                        <i class="far fa-circle"></i>
+                        <span>हिन्दी (Hindi)</span>
+                    </button>
+                    <button class="language-option" data-lang="es">
+                        <i class="far fa-circle"></i>
+                        <span>Español (Spanish)</span>
+                    </button>
+                    <button class="language-option" data-lang="de">
+                        <i class="far fa-circle"></i>
+                        <span>Deutsch (German)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-content help-modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-question-circle"></i> Help & Support</h3>
+                <button class="modal-close" id="closeHelpModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h4><i class="fas fa-book"></i> Quick Guide</h4>
+                    <ul class="help-list">
+                        <li><strong>Add Data:</strong> Click the "Add Row" button to add a new contractor entry</li>
+                        <li><strong>Edit Data:</strong> Click on any field to edit the information</li>
+                        <li><strong>Save:</strong> Click the "Save" button to store your changes</li>
+                        <li><strong>Export:</strong> Download your data as an Excel file</li>
+                        <li><strong>Search:</strong> Use the search bar to filter your data</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4><i class="fas fa-bell"></i> Notifications</h4>
+                    <p>You'll receive alerts when contracts are approaching their end date (within 30 days).</p>
+                </div>
+                <div class="help-section">
+                    <h4><i class="fas fa-envelope"></i> Contact Support</h4>
+                    <p>For technical assistance, please contact:</p>
+                    <p><strong>Email:</strong> support@cmrl.com</p>
+                    <p><strong>Phone:</strong> +91 44 1234 5678</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="auth.js"></script>
     <script src="api.js"></script>
@@ -165,11 +255,114 @@
             const user = await Auth.checkAuth();
             if (user) {
                 // Update UI with user info
-                document.getElementById('userName').textContent = user.name;
-                document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-                document.getElementById('userAvatar').textContent = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                const userName = user.name;
+                const userRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+                const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
+                
+                document.getElementById('userAvatar').textContent = userInitials;
+                document.getElementById('userAvatarLarge').textContent = userInitials;
+                document.getElementById('userNameDropdown').textContent = userName;
+                document.getElementById('userRoleDropdown').textContent = userRole;
             }
         })();
+
+        // Profile dropdown toggle
+        const profileTrigger = document.getElementById('profileTrigger');
+        const profileDropdown = document.getElementById('profileDropdown');
+        
+        if (profileTrigger && profileDropdown) {
+            profileTrigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('show');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!profileTrigger.contains(e.target) && !profileDropdown.contains(e.target)) {
+                    profileDropdown.classList.remove('show');
+                }
+            });
+        }
+
+        // Language menu item
+        const languageMenuItem = document.getElementById('languageMenuItem');
+        const languageModal = document.getElementById('languageModal');
+        const closeLanguageModal = document.getElementById('closeLanguageModal');
+        
+        if (languageMenuItem && languageModal) {
+            languageMenuItem.addEventListener('click', function(e) {
+                e.preventDefault();
+                profileDropdown.classList.remove('show');
+                languageModal.classList.add('show');
+            });
+
+            closeLanguageModal.addEventListener('click', function() {
+                languageModal.classList.remove('show');
+            });
+
+            languageModal.addEventListener('click', function(e) {
+                if (e.target === languageModal) {
+                    languageModal.classList.remove('show');
+                }
+            });
+
+            // Language option selection
+            const languageOptions = document.querySelectorAll('.language-option');
+            languageOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    languageOptions.forEach(opt => {
+                        opt.classList.remove('active');
+                        opt.querySelector('i').className = 'far fa-circle';
+                    });
+                    this.classList.add('active');
+                    this.querySelector('i').className = 'fas fa-check-circle';
+                    
+                    // Store language preference
+                    const lang = this.dataset.lang;
+                    localStorage.setItem('language', lang);
+                    
+                    // Close modal after selection
+                    setTimeout(() => {
+                        languageModal.classList.remove('show');
+                    }, 300);
+                });
+            });
+
+            // Load saved language preference
+            const savedLang = localStorage.getItem('language') || 'en';
+            languageOptions.forEach(option => {
+                if (option.dataset.lang === savedLang) {
+                    option.classList.add('active');
+                    option.querySelector('i').className = 'fas fa-check-circle';
+                } else {
+                    option.classList.remove('active');
+                    option.querySelector('i').className = 'far fa-circle';
+                }
+            });
+        }
+
+        // Help menu item
+        const helpMenuItem = document.getElementById('helpMenuItem');
+        const helpModal = document.getElementById('helpModal');
+        const closeHelpModal = document.getElementById('closeHelpModal');
+        
+        if (helpMenuItem && helpModal) {
+            helpMenuItem.addEventListener('click', function(e) {
+                e.preventDefault();
+                profileDropdown.classList.remove('show');
+                helpModal.classList.add('show');
+            });
+
+            closeHelpModal.addEventListener('click', function() {
+                helpModal.classList.remove('show');
+            });
+
+            helpModal.addEventListener('click', function(e) {
+                if (e.target === helpModal) {
+                    helpModal.classList.remove('show');
+                }
+            });
+        }
 
         // Logout handler
         document.getElementById('logoutBtn').addEventListener('click', function (e) {
@@ -178,6 +371,63 @@
                 Auth.logout();
             }
         });
+
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('mobile-active');
+                mobileOverlay.classList.toggle('active');
+                
+                // Change icon
+                const icon = this.querySelector('i');
+                if (sidebar.classList.contains('mobile-active')) {
+                    icon.className = 'fas fa-times';
+                } else {
+                    icon.className = 'fas fa-bars';
+                }
+            });
+        }
+        
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('mobile-active');
+                this.classList.remove('active');
+                mobileMenuToggle.querySelector('i').className = 'fas fa-bars';
+            });
+        }
+        
+        // Close mobile menu when nav item is clicked
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 1024) {
+                    sidebar.classList.remove('mobile-active');
+                    mobileOverlay.classList.remove('active');
+                    mobileMenuToggle.querySelector('i').className = 'fas fa-bars';
+                }
+            });
+        });
+        
+        // Mobile Search Toggle
+        const searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.addEventListener('click', function() {
+                if (window.innerWidth <= 768 && !this.classList.contains('expanded')) {
+                    this.classList.add('expanded');
+                    this.focus();
+                }
+            });
+            
+            searchInput.addEventListener('blur', function() {
+                if (window.innerWidth <= 768 && this.value === '') {
+                    this.classList.remove('expanded');
+                }
+            });
+        }
     </script>
 </body>
 

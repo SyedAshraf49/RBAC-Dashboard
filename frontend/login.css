@@ -6,14 +6,14 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* Deep premium gradient background */
-    background: linear-gradient(135deg, #123ea4 0%, #0d91c9 50%, #1a78ca 100%);
+    /* White and CMRL blue gradient background */
+    background: linear-gradient(135deg, #ffffff 0%, #e6f3ff 30%, #0066ff 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
-    color: #fff;
+    color: #333;
     overflow: hidden;
     position: relative;
 }
@@ -32,13 +32,13 @@ body::after {
 }
 
 body::before {
-    background: rgba(7, 87, 246, 0.832);
+    background: rgba(0, 102, 255, 0.2);
     top: -50px;
     left: -50px;
 }
 
 body::after {
-    background: rgba(255, 121, 198, 0.3);
+    background: rgba(230, 243, 255, 0.4);
     bottom: -50px;
     right: -50px;
     animation-delay: -5s;
@@ -61,15 +61,14 @@ body::after {
 }
 
 .login-card {
-    /* Glassmorphism Effect */
-    background: rgba(255, 255, 255, 0.05);
-    /* Very transparent white */
+    /* White glassmorphism effect */
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 102, 255, 0.2);
     border-radius: 24px;
     padding: 40px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 102, 255, 0.3);
     animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
@@ -114,17 +113,30 @@ body::after {
     margin-bottom: 35px;
 }
 
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.cmrl-logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 10px rgba(0, 102, 255, 0.2));
+}
+
 .login-header h1 {
-    color: #ffffff;
+    color: #0066ff;
     font-size: 32px;
     margin-bottom: 10px;
     font-weight: 700;
     letter-spacing: -0.5px;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 2px 10px rgba(0, 102, 255, 0.1);
 }
 
 .login-header p {
-    color: rgba(255, 255, 255, 0.7);
+    color: #555;
     font-size: 16px;
 }
 
@@ -140,7 +152,7 @@ body::after {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #333;
     font-weight: 500;
     font-size: 14px;
     margin-left: 4px;
@@ -149,24 +161,23 @@ body::after {
 .form-group input {
     width: 100%;
     padding: 14px 18px;
-    /* Glass input */
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 102, 255, 0.2);
     border-radius: 12px;
     font-size: 15px;
-    color: #fff;
+    color: #333;
     transition: all 0.3s ease;
     outline: none;
 }
 
 .form-group input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(0, 0, 0, 0.4);
 }
 
 .form-group input:focus {
-    background: rgba(0, 0, 0, 0.4);
-    border-color: rgba(123, 44, 191, 0.6);
-    box-shadow: 0 0 0 4px rgba(123, 44, 191, 0.15);
+    background: rgba(255, 255, 255, 1);
+    border-color: #0066ff;
+    box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
     transform: translateY(-1px);
 }
 
@@ -215,7 +226,7 @@ body::after {
 .login-btn {
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, #05a5da 0%, #1154bf 100%);
+    background: linear-gradient(135deg, #0066ff 0%, #0052cc 100%);
     color: white;
     border: none;
     border-radius: 12px;
@@ -226,13 +237,13 @@ body::after {
     position: relative;
     overflow: hidden;
     margin-top: 10px;
-    box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
 }
 
 .login-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(30, 114, 203, 0.867);
-    background: linear-gradient(135deg, #164fb9 0%, #1071d8 100%);
+    box-shadow: 0 8px 25px rgba(0, 102, 255, 0.5);
+    background: linear-gradient(135deg, #0052cc 0%, #0066ff 100%);
 }
 
 .login-btn:active {
@@ -246,7 +257,7 @@ body::after {
 }
 
 .forgot-password-link a {
-    color: rgba(255, 255, 255, 0.6);
+    color: #0066ff;
     font-size: 13px;
     text-decoration: none;
     transition: all 0.3s ease;
@@ -254,9 +265,9 @@ body::after {
 
 /* FIX: Ensure visibility on hover */
 .forgot-password-link a:hover {
-    color: #ffffff;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    text-decoration: none;
+    color: #0052cc;
+    text-shadow: 0 0 10px rgba(0, 102, 255, 0.3);
+    text-decoration: underline;
 }
 
 /* Modal Styles */
@@ -278,21 +289,20 @@ body::after {
 }
 
 .modal-content {
-    background: #1e1135;
-    /* Solid dark color for modal content to ensure readability */
-    border: 1px solid rgba(123, 44, 191, 0.3);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(0, 102, 255, 0.3);
     border-radius: 20px;
     padding: 35px;
     width: 90%;
     max-width: 400px;
     position: relative;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 15px 40px rgba(0, 102, 255, 0.3);
     animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    color: #fff;
+    color: #333;
 }
 
 .close-modal {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(0, 0, 0, 0.5);
     position: absolute;
     right: 20px;
     top: 15px;
@@ -302,20 +312,20 @@ body::after {
 }
 
 .close-modal:hover {
-    color: #fff;
+    color: #0066ff;
     transform: rotate(90deg);
 }
 
 .modal h2 {
     margin-top: 0;
-    color: #fff;
+    color: #0066ff;
     text-align: center;
     margin-bottom: 25px;
     font-size: 24px;
 }
 
 .reset-step p {
-    color: rgba(255, 255, 255, 0.7);
+    color: #555;
     margin-bottom: 20px;
     text-align: center;
     font-size: 15px;
@@ -350,11 +360,11 @@ body::after {
 .login-footer {
     margin-top: 30px;
     padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(0, 102, 255, 0.2);
 }
 
 .demo-info {
-    color: rgba(255, 255, 255, 0.6);
+    color: #666;
     font-size: 13px;
     margin-bottom: 12px;
     font-weight: 600;
@@ -363,14 +373,14 @@ body::after {
 }
 
 .demo-accounts {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 102, 255, 0.05);
     padding: 15px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(0, 102, 255, 0.2);
 }
 
 .demo-account {
-    color: rgba(255, 255, 255, 0.8);
+    color: #333;
     font-size: 13px;
     margin-bottom: 8px;
     font-family: monospace;
@@ -381,22 +391,107 @@ body::after {
 }
 
 .demo-account strong {
-    color: #1983ca;
+    color: #0066ff;
     margin-right: 5px;
 }
 
 /* Responsive */
-@media (max-width: 500px) {
+@media (max-width: 768px) {
     .login-card {
-        padding: 30px 20px;
+        padding: 35px 25px;
+        max-width: 90%;
+        margin: 20px;
     }
 
     .login-header h1 {
-        font-size: 26px;
+        font-size: 28px;
+    }
+    
+    .login-header p {
+        font-size: 14px;
+    }
+
+    .modal-content {
+        padding: 30px 20px;
+        max-width: 90%;
+    }
+    
+    .modal h2 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 500px) {
+    .login-card {
+        padding: 30px 20px;
+        max-width: 95%;
+        margin: 15px;
+    }
+
+    .login-header h1 {
+        font-size: 24px;
+    }
+    
+    .login-header p {
+        font-size: 13px;
     }
 
     body {
         align-items: flex-start;
-        padding-top: 40px;
+        padding-top: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 18px;
+    }
+    
+    .input-group input {
+        padding: 12px 12px 12px 42px;
+        font-size: 15px;
+    }
+    
+    .input-icon {
+        left: 14px;
+        font-size: 16px;
+    }
+    
+    .login-btn {
+        padding: 14px;
+        font-size: 15px;
+    }
+    
+    .demo-accounts {
+        padding: 12px;
+    }
+    
+    .demo-account {
+        font-size: 12px;
+    }
+    
+    .modal-content {
+        padding: 25px 18px;
+    }
+    
+    .modal h2 {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 375px) {
+    .login-card {
+        padding: 25px 18px;
+    }
+    
+    .login-header h1 {
+        font-size: 22px;
+    }
+    
+    .logo-grid {
+        width: 35px;
+        height: 35px;
+    }
+    
+    body {
+        padding-top: 20px;
     }
 }

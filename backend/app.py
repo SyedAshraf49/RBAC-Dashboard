@@ -70,7 +70,8 @@ DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'database': os.getenv('DB_NAME', 'reminder_dashboard'),
     'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', '7849'),
+    'password': os.getenv('DB_PASSWORD', '8o78o78O!'),
+    'port': int(os.getenv('DB_PORT', 3306)),
     'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci'
 }

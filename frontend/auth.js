@@ -74,14 +74,14 @@ const Auth = {
             document.documentElement.removeAttribute('data-theme');
         }
 
-        // Update toggle icon
+        // Update toggle icon - show what mode you can switch TO
         const btn = document.getElementById('themeToggleBtn');
         if (btn) {
             const icon = btn.querySelector('i');
             if (theme === 'light') {
-                icon.className = 'fas fa-sun';
+                icon.className = 'fas fa-moon'; // Show moon to indicate can switch to dark
             } else {
-                icon.className = 'fas fa-moon';
+                icon.className = 'fas fa-sun'; // Show sun to indicate can switch to light
             }
         }
     },
