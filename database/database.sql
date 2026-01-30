@@ -44,25 +44,28 @@ CREATE TABLE IF NOT EXISTS bill_tracker (
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
 
-    CREATE TABLE IF NOT EXISTS epbg (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        sno VARCHAR(50),
-        contractor TEXT,
-        po_no VARCHAR(255),
-        bg_no VARCHAR(255),
-        bg_date DATE,
-        bg_amount VARCHAR(255),
-        bg_validity VARCHAR(255),
-        gem_bid_no VARCHAR(255),
-        ref_efile_no VARCHAR(255),
-        file_name VARCHAR(255),
-        file_base64 LONGTEXT,
-        file_type VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB
-    DEFAULT CHARSET=utf8mb4
-    COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS epbg (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sno VARCHAR(50),
+    contractor TEXT,
+    po_no VARCHAR(255),
+    bg_no VARCHAR(255),
+    bg_date DATE,
+    bg_amount VARCHAR(255),
+    bg_validity VARCHAR(255),
+    gem_bid_no VARCHAR(255),
+    ref_efile_no VARCHAR(255),
+    file_name VARCHAR(255),
+    file_base64 LONGTEXT,
+    file_type VARCHAR(100),
+    bg_no_attachment_name VARCHAR(255),
+    bg_no_attachment_base64 LONGTEXT,
+    bg_no_attachment_type VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (

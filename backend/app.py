@@ -151,6 +151,9 @@ def init_database():
                     file_name VARCHAR(255),
                     file_base64 LONGTEXT,
                     file_type VARCHAR(100),
+                    bg_no_attachment_name VARCHAR(255),
+                    bg_no_attachment_base64 LONGTEXT,
+                    bg_no_attachment_type VARCHAR(100),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -207,8 +210,8 @@ def init_database():
                     ('user2', 'user2@company.com', 'User@456', 'User Two', 'user'),
                     ('user3', 'user3@company.com', 'User@789', 'User Three', 'user'),
                     ('user4', 'user4@company.com', 'User@012', 'User Four', 'user'),
-                    ('staff1', 'staff1@company.com', 'Staff@123', 'Staff One', 'staff'),
-                    ('staff2', 'staff2@company.com', 'Staff@456', 'Staff Two', 'staff')
+                    ('staff1', 'staff1@company.com', 'Staff@123', 'Staff One', 'admin'),
+                    ('staff2', 'staff2@company.com', 'Staff@456', 'Staff Two', 'admin')
                 """)
                 print("Default users inserted successfully")
             
@@ -557,8 +560,8 @@ def save_contractor_list():
         insert_query = """
             INSERT INTO contractor_list 
             (sno, efile, contractor, description, value, start_date, end_date, duration, 
-             file_name, file_base64, file_type)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             file_name, file_base64, file_type, gst)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         records_to_insert = []
@@ -574,7 +577,8 @@ def save_contractor_list():
                 record.get('duration', ''),
                 record.get('fileName', ''),
                 record.get('fileBase64', ''),
-                record.get('fileType', '')
+                record.get('fileType', ''),
+                record.get('gst', '')
             ))
         
         cursor.executemany(insert_query, records_to_insert)
@@ -728,8 +732,8 @@ def save_epbg():
         insert_query = """
             INSERT INTO epbg 
             (sno, contractor, po_no, bg_no, bg_date, bg_amount, bg_validity, 
-             gem_bid_no, ref_efile_no, file_name, file_base64, file_type)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             gem_bid_no, ref_efile_no, file_name, file_base64, file_type, bg_no_attachment_name, bg_no_attachment_base64, bg_no_attachment_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         records_to_insert = []
@@ -746,7 +750,10 @@ def save_epbg():
                 record.get('refEfile', ''),
                 record.get('fileName', ''),
                 record.get('fileBase64', ''),
-                record.get('fileType', '')
+                record.get('fileType', ''),
+                record.get('bgNoAttachmentName', ''),
+                record.get('bgNoAttachmentBase64', ''),
+                record.get('bgNoAttachmentType', '')
             ))
         
         cursor.executemany(insert_query, records_to_insert)

@@ -144,6 +144,10 @@ function addRow() {
             <span class="file-name"></span>
         </td>
         <td>
+            <input type="file" class="bg-no-attachment-input" accept="*/*">
+            <span class="bg-no-file-name"></span>
+        </td>
+        <td>
             <button class="delete-btn" onclick="deleteRow(this)">
                 <i class="fas fa-trash"></i> Delete
             </button>
@@ -153,9 +157,16 @@ function addRow() {
     tbody.appendChild(row);
 
     const fileInput = row.querySelector('.attachment-input');
+    const bgNoFileInput = row.querySelector('.bg-no-attachment-input');
+    
     fileInput.addEventListener('change', function (e) {
         validateFileSize(e.target);
         updateContractorHyperlink(row);
+        updateBgHyperlink(row);
+    });
+
+    bgNoFileInput.addEventListener('change', function (e) {
+        validateBgNoFileSize(e.target);
         updateBgHyperlink(row);
     });
 
@@ -184,6 +195,29 @@ function validateFileSize(input) {
 
         if (fileSizeMB > 10) {
             alert('File size exceeds 10MB. Please select a smaller file.');
+            input.value = '';
+            fileNameSpan.textContent = '';
+            return false;
+        } else {
+            fileNameSpan.textContent = file.name;
+            fileNameSpan.style.color = '#00d4ff';
+            fileNameSpan.style.fontSize = '12px';
+            return true;
+        }
+    }
+    return false;
+}
+
+// Validate BG NO attachment file size (max 10MB)
+function validateBgNoFileSize(input) {
+    const file = input.files[0];
+    const fileNameSpan = input.parentElement.querySelector('.bg-no-file-name');
+
+    if (file) {
+        const fileSizeMB = file.size / (1024 * 1024);
+
+        if (fileSizeMB > 10) {
+            alert('BG NO attachment file size exceeds 10MB. Please select a smaller file.');
             input.value = '';
             fileNameSpan.textContent = '';
             return false;
@@ -262,34 +296,34 @@ function updateContractorHyperlink(row) {
     }
 }
 
-// Update BG No hyperlink based on BG No and attachment (dynamic update)
+// Update BG No hyperlink based on BG No and BG NO attachment (dynamic update)
 function updateBgHyperlink(row) {
     const bgInput = row.querySelector('.bg-no-input');
     const bgLink = row.querySelector('.bg-link');
-    const attachmentInput = row.querySelector('.attachment-input');
-    const file = attachmentInput?.files[0];
+    const bgNoAttachmentInput = row.querySelector('.bg-no-attachment-input');
+    const bgNoFile = bgNoAttachmentInput?.files[0];
 
     if (!bgInput || !bgLink) return;
 
     // Get BG NO from input (input is always visible now)
     let bgNo = bgInput.value.trim();
 
-    // Check if file changed - if so, clean up old URL
+    // Check if BG NO attachment file changed - if so, clean up old URL
     const currentFileName = bgLink.dataset.fileName;
-    if (currentFileName && file && file.name !== currentFileName) {
+    if (currentFileName && bgNoFile && bgNoFile.name !== currentFileName) {
         if (bgLink.dataset.objectUrl) {
             URL.revokeObjectURL(bgLink.dataset.objectUrl);
             delete bgLink.dataset.objectUrl;
         }
     }
 
-    if (file) {
-        // Get or create object URL for the file
+    if (bgNoFile) {
+        // Get or create object URL for the BG NO attachment file
         let fileUrl = bgLink.dataset.objectUrl;
         if (!fileUrl) {
-            fileUrl = URL.createObjectURL(file);
+            fileUrl = URL.createObjectURL(bgNoFile);
             bgLink.dataset.objectUrl = fileUrl;
-            bgLink.dataset.fileName = file.name;
+            bgLink.dataset.fileName = bgNoFile.name;
         }
 
         bgLink.href = '#';
@@ -306,12 +340,12 @@ function updateBgHyperlink(row) {
         bgLink.replaceWith(bgLink.cloneNode(true));
         const newLink = row.querySelector('.bg-link');
 
-        // Add click handler to open file visually
+        // Add click handler to open BG NO attachment file visually
         newLink.addEventListener('click', function (e) {
             e.preventDefault();
             const currentFileUrl = newLink.dataset.objectUrl;
             if (currentFileUrl) {
-                openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
+                openFileVisually(currentFileUrl, newLink.dataset.fileName, bgNoFile.type);
             }
         });
 
@@ -474,7 +508,9 @@ async function saveDataToStorage() {
         const gemBid = row.querySelector('.gem-bid-input')?.value || '';
         const refEfile = row.querySelector('.ref-efile-input')?.value || '';
         const attachmentInput = row.querySelector('.attachment-input');
+        const bgNoAttachmentInput = row.querySelector('.bg-no-attachment-input');
         const file = attachmentInput?.files[0];
+        const bgNoFile = bgNoAttachmentInput?.files[0];
 
         let fileBase64 = '';
         let fileName = '';
@@ -490,6 +526,20 @@ async function saveDataToStorage() {
             }
         }
 
+        let bgNoAttachmentBase64 = '';
+        let bgNoAttachmentName = '';
+        let bgNoAttachmentType = '';
+
+        if (bgNoFile) {
+            bgNoAttachmentName = bgNoFile.name;
+            bgNoAttachmentType = bgNoFile.type;
+            try {
+                bgNoAttachmentBase64 = await fileToBase64(bgNoFile);
+            } catch (error) {
+                console.error('Error converting BG NO attachment file to base64:', error);
+            }
+        }
+
         dataToSave.push({
             sno,
             contractor,
@@ -502,7 +552,10 @@ async function saveDataToStorage() {
             refEfile,
             fileName,
             fileBase64,
-            fileType
+            fileType,
+            bgNoAttachmentName,
+            bgNoAttachmentBase64,
+            bgNoAttachmentType
         });
     }
 
@@ -568,6 +621,9 @@ async function loadData() {
                 const fileBase64 = rowData.fileBase64 || rowData.file_base64 || rowData.FILE_BASE64 || '';
                 const hasFile = fileName && fileBase64;
                 const bgValue = rowData.bgNo || rowData.bg_no || rowData.BG_NO || '';
+                const bgNoAttachmentName = rowData.bgNoAttachmentName || rowData.bg_no_attachment_name || rowData.BG_NO_ATTACHMENT_NAME || '';
+                const bgNoAttachmentBase64 = rowData.bgNoAttachmentBase64 || rowData.bg_no_attachment_base64 || rowData.BG_NO_ATTACHMENT_BASE64 || '';
+                const hasBgNoFile = bgNoAttachmentName && bgNoAttachmentBase64;
 
                 row.innerHTML = `
                     <td>
@@ -581,8 +637,8 @@ async function loadData() {
                         <input type="text" class="po-no-input" placeholder="Enter P.O No" value="${rowData.poNo || rowData.po_no || rowData.PO_NO || ''}">
                     </td>
                     <td>
-                        <input type="text" class="bg-no-input" placeholder="Enter BG No" value="${bgValue}" ${hasFile ? 'style="display: none;"' : ''}>
-                        <a href="#" class="bg-link" ${hasFile ? 'style="display: inline-block; color: #00d4ff; text-decoration: underline; cursor: pointer;"' : 'style="display: none;"'}">${bgValue}</a>
+                        <input type="text" class="bg-no-input" placeholder="Enter BG No" value="${bgValue}" ${hasBgNoFile ? 'style="display: none;"' : ''}>
+                        <a href="#" class="bg-link" ${hasBgNoFile ? 'style="display: inline-block; color: #00d4ff; text-decoration: underline; cursor: pointer;"' : 'style="display: none;"'}">${bgValue}</a>
                     </td>
                     <td>
                         <input type="date" class="bg-date-input" value="${rowData.bgDate || rowData.bg_date || rowData.BG_DATE || ''}">
@@ -602,6 +658,10 @@ async function loadData() {
                     <td>
                         <input type="file" class="attachment-input" accept="*/*">
                         <span class="file-name" style="color: #00d4ff; font-size: 12px;">${fileName}</span>
+                    </td>
+                    <td>
+                        <input type="file" class="bg-no-attachment-input" accept="*/*">
+                        <span class="bg-no-file-name" style="color: #00d4ff; font-size: 12px;">${bgNoAttachmentName}</span>
                     </td>
                     <td>
                         <button class="delete-btn" onclick="deleteRow(this)">
@@ -663,7 +723,41 @@ async function loadData() {
                     }
                 }
 
+                // Restore BG NO attachment file if it exists and link to BG NO
+                if (hasBgNoFile && bgNoAttachmentBase64) {
+                    try {
+                        const bgNoFile = base64ToFile(bgNoAttachmentBase64, bgNoAttachmentName);
+                        const bgNoFileInput = row.querySelector('.bg-no-attachment-input');
+                        const bgNoDataTransfer = new DataTransfer();
+                        bgNoDataTransfer.items.add(bgNoFile);
+                        bgNoFileInput.files = bgNoDataTransfer.files;
+
+                        const bgNoFileUrl = URL.createObjectURL(bgNoFile);
+
+                        // Update BG link with BG NO attachment file
+                        const bgLink = row.querySelector('.bg-link');
+                        if (bgLink && bgValue) {
+                            bgLink.href = '#';
+                            bgLink.dataset.objectUrl = bgNoFileUrl;
+                            bgLink.dataset.fileName = bgNoFile.name;
+
+                            // Remove existing click listener if any
+                            bgLink.replaceWith(bgLink.cloneNode(true));
+                            const newBgLink = row.querySelector('.bg-link');
+
+                            // Add click handler to open BG NO attachment file
+                            newBgLink.addEventListener('click', function (e) {
+                                e.preventDefault();
+                                openFileVisually(bgNoFileUrl, bgNoFile.name, bgNoFile.type);
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error restoring BG NO attachment file:', error);
+                    }
+                }
+
                 const fileInput = row.querySelector('.attachment-input');
+                const bgNoFileInput = row.querySelector('.bg-no-attachment-input');
                 const contractorInput = row.querySelector('.contractor-input');
                 const bgInput = row.querySelector('.bg-no-input');
 
@@ -672,6 +766,12 @@ async function loadData() {
                         validateFileSize(e.target);
                         updateContractorHyperlink(row);
                         updateBgHyperlink(row);
+                    });
+                }
+
+                if (bgNoFileInput) {
+                    bgNoFileInput.addEventListener('change', function (e) {
+                        validateBgNoFileSize(e.target);
                     });
                 }
 
@@ -765,6 +865,7 @@ function printTable() {
                         <th>GeM BID NO</th>
                         <th>REF EFILE NO</th>
                         <th>ATTACHMENT</th>
+                        <th>BG NO ATTACHMENT</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -789,6 +890,7 @@ function printTable() {
         const gemBid = row.querySelector('.gem-bid-input')?.value || '';
         const refEfile = row.querySelector('.ref-efile-input')?.value || '';
         const fileName = row.querySelector('.file-name')?.textContent.trim() || '';
+        const bgNoFileName = row.querySelector('.bg-no-file-name')?.textContent.trim() || '';
 
         tableHTML += `
             <tr>
@@ -802,6 +904,7 @@ function printTable() {
                 <td>${gemBid}</td>
                 <td>${refEfile}</td>
                 <td>${fileName}</td>
+                <td>${bgNoFileName}</td>
             </tr>
         `;
     });
