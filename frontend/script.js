@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Check for duration warnings after data loads
     setTimeout(() => {
         checkAllDurations();
+        updateAllDurations(); // Update all durations to show current days left
+        startRealTimeDurationUpdates(); // Start real-time updates
     }, 500);
 });
 
@@ -242,21 +244,33 @@ function calculateDuration(event) {
     if (startDateInput.value && endDateInput.value) {
         const startDate = new Date(startDateInput.value);
         const endDate = new Date(endDateInput.value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for accurate calculation
 
         if (endDate >= startDate) {
-            const diffTime = endDate - startDate;
+            const diffTime = endDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            durationDisplay.textContent = `${diffDays} days left`;
-            durationDisplay.classList.remove('duration-left', 'duration-safe');
-
-            // Color coding: red if <= 60 days
-            if (diffDays <= 60) {
+            if (diffDays < 0) {
+                durationDisplay.textContent = 'Expired';
+                durationDisplay.classList.remove('duration-safe');
                 durationDisplay.classList.add('duration-left');
-                // Show notification pop-up
-                showDurationNotification(row, diffDays);
+            } else if (diffDays === 0) {
+                durationDisplay.textContent = 'Expires today';
+                durationDisplay.classList.remove('duration-safe');
+                durationDisplay.classList.add('duration-left');
             } else {
-                durationDisplay.classList.add('duration-safe');
+                durationDisplay.textContent = `${diffDays} days left`;
+                durationDisplay.classList.remove('duration-left', 'duration-safe');
+
+                // Color coding: red if <= 60 days
+                if (diffDays <= 60) {
+                    durationDisplay.classList.add('duration-left');
+                    // Show notification pop-up
+                    showDurationNotification(row, diffDays);
+                } else {
+                    durationDisplay.classList.add('duration-safe');
+                }
             }
         } else {
             durationDisplay.textContent = 'Invalid dates';
@@ -272,6 +286,205 @@ function calculateDuration(event) {
     saveDataToStorage();
     // Update notification badge
     updateNotificationCount();
+}
+
+// Update all durations to show current days left from today
+function updateAllDurations() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const startDateInput = row.querySelector('.start-date-input');
+        const endDateInput = row.querySelector('.end-date-input');
+        const durationDisplay = row.querySelector('.duration-display');
+
+        if (startDateInput && endDateInput && durationDisplay && 
+            startDateInput.value && endDateInput.value) {
+            
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to start of day for accurate calculation
+
+            if (endDate >= startDate) {
+                const diffTime = endDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0) {
+                    durationDisplay.textContent = 'Expired';
+                    durationDisplay.classList.remove('duration-safe');
+                    durationDisplay.classList.add('duration-left');
+                } else if (diffDays === 0) {
+                    durationDisplay.textContent = 'Expires today';
+                    durationDisplay.classList.remove('duration-safe');
+                    durationDisplay.classList.add('duration-left');
+                } else {
+                    durationDisplay.textContent = `${diffDays} days left`;
+                    durationDisplay.classList.remove('duration-left', 'duration-safe');
+
+                    // Color coding: red if <= 60 days
+                    if (diffDays <= 60) {
+                        durationDisplay.classList.add('duration-left');
+                    } else {
+                        durationDisplay.classList.add('duration-safe');
+                    }
+                }
+            } else {
+                durationDisplay.textContent = 'Invalid dates';
+                durationDisplay.classList.remove('duration-safe');
+                durationDisplay.classList.add('duration-left');
+            }
+        }
+    });
+    
+    // Update notification badge after updating all durations
+    updateNotificationCount();
+}
+
+// Start real-time duration updates based on current date
+function startRealTimeDurationUpdates() {
+    let lastUpdateDate = new Date().toDateString(); // Track the last update date
+    
+    // Create real-time status indicator
+    createRealTimeStatusIndicator();
+    
+    // Function to calculate time until next midnight
+    function getTimeUntilMidnight() {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        return tomorrow.getTime() - now.getTime();
+    }
+    
+    // Function to schedule next update
+    function scheduleNextUpdate() {
+        const timeUntilMidnight = getTimeUntilMidnight();
+        
+        // Schedule update for midnight
+        setTimeout(() => {
+            const currentDate = new Date();
+            const currentDateString = currentDate.toDateString();
+            
+            if (lastUpdateDate !== currentDateString) {
+                console.log('Midnight reached, updating durations for new day...');
+                lastUpdateDate = currentDateString;
+                
+                // Update all durations for the new day
+                updateAllDurations();
+                
+                // Check for new warnings
+                checkAllDurations();
+                
+                // Show notification about the update
+                showDateChangeNotification();
+                
+                // Update status indicator
+                updateRealTimeStatusIndicator();
+            }
+            
+            // Schedule next midnight check
+            scheduleNextUpdate();
+        }, timeUntilMidnight);
+        
+        // Also update every minute for real-time accuracy during the day
+        setInterval(() => {
+            updateAllDurations();
+            updateRealTimeStatusIndicator();
+        }, 60000); // Check every minute
+    }
+    
+    // Start the scheduling
+    scheduleNextUpdate();
+    
+    // Initial update
+    updateAllDurations();
+    updateRealTimeStatusIndicator();
+}
+
+// Create real-time status indicator
+function createRealTimeStatusIndicator() {
+    const header = document.querySelector('.header-left');
+    if (!header) return;
+    
+    const statusIndicator = document.createElement('div');
+    statusIndicator.id = 'realTimeStatus';
+    statusIndicator.style.cssText = `
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    `;
+    
+    statusIndicator.innerHTML = `
+        <i class="fas fa-clock" style="font-size: 10px;"></i>
+        <span id="lastUpdateText">Real-time updates active</span>
+    `;
+    
+    header.appendChild(statusIndicator);
+}
+
+// Update real-time status indicator
+function updateRealTimeStatusIndicator() {
+    const statusText = document.getElementById('lastUpdateText');
+    if (!statusText) return;
+    
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+    });
+    
+    statusText.textContent = `Last updated: ${timeString}`;
+}
+
+// Show subtle notification when date changes and durations are updated
+function showDateChangeNotification() {
+    // Create a subtle notification that durations have been updated
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        z-index: 10000;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s ease;
+    `;
+    notification.innerHTML = `
+        <i class="fas fa-sync-alt" style="margin-right: 8px;"></i>
+        Durations updated for new day
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateY(0)';
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
 
 // Show notification pop-up for duration <= 60 days
@@ -552,9 +765,12 @@ function getWarningCount() {
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
             const startDate = new Date(startDateInput.value);
             const endDate = new Date(endDateInput.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to start of day for accurate calculation
+            
             if (endDate >= startDate) {
-                const diffDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-                if (diffDays <= 60) {
+                const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 60 && diffDays >= 0) {
                     count++;
                 }
             }
@@ -587,12 +803,14 @@ function checkAllDurations() {
         if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
             const startDate = new Date(startDateInput.value);
             const endDate = new Date(endDateInput.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to start of day for accurate calculation
 
             if (endDate >= startDate) {
-                const diffTime = endDate - startDate;
+                const diffTime = endDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diffDays <= 60 && durationDisplay) {
+                if (diffDays <= 60 && diffDays >= 0 && durationDisplay) {
                     // Show notification for this row
                     showDurationNotification(row, diffDays);
                 }

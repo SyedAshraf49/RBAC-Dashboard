@@ -70,7 +70,7 @@ DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'database': os.getenv('DB_NAME', 'reminder_dashboard'),
     'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', '8o78o78O!'),
+    'password': os.getenv('DB_PASSWORD', '7849'),
     'port': int(os.getenv('DB_PORT', 3306)),
     'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci'
@@ -101,6 +101,7 @@ def init_database():
                     contractor TEXT,
                     description TEXT,
                     value VARCHAR(255),
+                    gst VARCHAR(20),
                     start_date DATE,
                     end_date DATE,
                     duration VARCHAR(255),

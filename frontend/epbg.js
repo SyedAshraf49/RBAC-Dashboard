@@ -156,12 +156,19 @@ function addRow() {
     fileInput.addEventListener('change', function (e) {
         validateFileSize(e.target);
         updateContractorHyperlink(row);
+        updateBgHyperlink(row);
     });
 
     // Setup contractor input listener
     const contractorInput = row.querySelector('.contractor-input');
     contractorInput.addEventListener('input', function () {
         updateContractorHyperlink(row);
+    });
+
+    // Setup BG NO input listener
+    const bgInput = row.querySelector('.bg-no-input');
+    bgInput.addEventListener('input', function () {
+        updateBgHyperlink(row);
     });
 
     updateTotalCount();
@@ -255,7 +262,7 @@ function updateContractorHyperlink(row) {
     }
 }
 
-// Update BG No hyperlink based on BG No and attachment (called on Save)
+// Update BG No hyperlink based on BG No and attachment (dynamic update)
 function updateBgHyperlink(row) {
     const bgInput = row.querySelector('.bg-no-input');
     const bgLink = row.querySelector('.bg-link');
@@ -264,24 +271,36 @@ function updateBgHyperlink(row) {
 
     if (!bgInput || !bgLink) return;
 
-    const bgNo = bgInput.value.trim();
+    // Get BG NO from input (input is always visible now)
+    let bgNo = bgInput.value.trim();
 
-    // Clean previous object URL
-    if (bgLink.dataset.objectUrl) {
-        URL.revokeObjectURL(bgLink.dataset.objectUrl);
-        delete bgLink.dataset.objectUrl;
+    // Check if file changed - if so, clean up old URL
+    const currentFileName = bgLink.dataset.fileName;
+    if (currentFileName && file && file.name !== currentFileName) {
+        if (bgLink.dataset.objectUrl) {
+            URL.revokeObjectURL(bgLink.dataset.objectUrl);
+            delete bgLink.dataset.objectUrl;
+        }
     }
 
-    if (file && bgNo) {
-        const fileUrl = URL.createObjectURL(file);
+    if (file) {
+        // Get or create object URL for the file
+        let fileUrl = bgLink.dataset.objectUrl;
+        if (!fileUrl) {
+            fileUrl = URL.createObjectURL(file);
+            bgLink.dataset.objectUrl = fileUrl;
+            bgLink.dataset.fileName = file.name;
+        }
+
         bgLink.href = '#';
-        bgLink.textContent = bgNo;
-        bgLink.dataset.objectUrl = fileUrl;
-        bgLink.dataset.fileName = file.name;
-        bgLink.style.display = 'inline-block';
+        bgLink.textContent = bgNo || bgLink.textContent || 'BG NO';
+        bgLink.style.display = bgNo ? 'block' : 'none';
         bgLink.style.color = '#00d4ff';
         bgLink.style.textDecoration = 'underline';
         bgLink.style.cursor = 'pointer';
+        bgLink.style.marginTop = '5px';
+        bgLink.style.fontSize = '12px';
+        bgLink.style.textAlign = 'center';
 
         // Remove existing click listener if any
         bgLink.replaceWith(bgLink.cloneNode(true));
@@ -290,13 +309,20 @@ function updateBgHyperlink(row) {
         // Add click handler to open file visually
         newLink.addEventListener('click', function (e) {
             e.preventDefault();
-            openFileVisually(fileUrl, file.name, file.type);
+            const currentFileUrl = newLink.dataset.objectUrl;
+            if (currentFileUrl) {
+                openFileVisually(currentFileUrl, newLink.dataset.fileName, file.type);
+            }
         });
 
-        bgInput.style.display = 'none';
+        // Always sync link text with input value
+        newLink.textContent = bgNo || newLink.textContent || 'BG NO';
+        newLink.style.display = bgNo ? 'block' : 'none';
+
+        // Keep input visible
+        bgInput.style.display = '';
     } else {
         bgLink.style.display = 'none';
-        bgInput.style.display = '';
         bgLink.removeAttribute('href');
     }
 }
@@ -639,17 +665,25 @@ async function loadData() {
 
                 const fileInput = row.querySelector('.attachment-input');
                 const contractorInput = row.querySelector('.contractor-input');
+                const bgInput = row.querySelector('.bg-no-input');
 
                 if (fileInput) {
                     fileInput.addEventListener('change', function (e) {
                         validateFileSize(e.target);
                         updateContractorHyperlink(row);
+                        updateBgHyperlink(row);
                     });
                 }
 
                 if (contractorInput) {
                     contractorInput.addEventListener('input', function () {
                         updateContractorHyperlink(row);
+                    });
+                }
+
+                if (bgInput) {
+                    bgInput.addEventListener('input', function () {
+                        updateBgHyperlink(row);
                     });
                 }
             });

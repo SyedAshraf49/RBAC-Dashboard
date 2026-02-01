@@ -752,11 +752,6 @@ body::after {
     color: #fff;
 }
 
-    display: flex;
-    flex-direction: column;
-}
-
-
 [data-theme="light"] .profile-dropdown-wrapper {
     border-left: 1px solid #e1e4e8;
 }
@@ -1005,7 +1000,7 @@ body::after {
     text-transform: uppercase;
     letter-spacing: 1px;
     color: rgba(255, 255, 255, 0.4);
-    text-align: left;
+    text-align: center;
     border-bottom: none;
     white-space: nowrap;
 }
