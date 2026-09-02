@@ -213,8 +213,9 @@ def init_database():
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_password_resets_otp_hash ON password_resets(otp_hash)")
             
             # Check if users table is empty and insert default users
-            cursor.execute("SELECT COUNT(*) FROM users")
-            user_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            result = cursor.fetchone()
+            user_count = result['count'] if result else 0
             
             if user_count == 0:
                 cursor.execute("""
