@@ -2,23 +2,58 @@
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 
 # Flask runtime data
 flask_session/
+instance/
+
+# Environment variables
+backend/.env
+.env
+*.env
+!.env.example
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv
 
 # Logs & outputs
 smtp_result.txt
+*.log
 
 # Tests (local only)
 test_smtp.py
 test_socket.py
+tests/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Node
 node_modules/
+npm-debug.log
+yarn-error.log
 
 # Editor settings
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/

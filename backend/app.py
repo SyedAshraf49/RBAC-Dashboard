@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from flask_session import Session
-import mysql.connector
-from mysql.connector import Error
+import psycopg2
+from psycopg2 import Error
+from psycopg2.extras import RealDictCursor
 import json
 import os
 from datetime import datetime, timedelta
@@ -13,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import secrets
 import hashlib
+from urllib.parse import urlparse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,16 +24,18 @@ frontend_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 
 app = Flask(__name__, static_folder=frontend_dir, static_url_path='')
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = True if os.getenv('FLASK_ENV') == 'production' else False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session lasts 24 hours
-app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh session timeout on each request
-app.config['SESSION_TYPE'] = 'filesystem'  # Use server-side session storage
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(os.path.dirname(__file__), 'flask_session')
+
+# CORS configuration - allow all origins in production (you can restrict this later)
 CORS(app, 
      supports_credentials=True,
-     origins=['http://localhost:5000', 'http://127.0.0.1:5000'],
+     origins='*',
      allow_headers=['Content-Type'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
@@ -66,23 +70,41 @@ def home():
     """Serve the login page by default"""
     return app.send_static_file('login.html')
 
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'database': os.getenv('DB_NAME', 'reminder_dashboard'),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', '7849'),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'charset': 'utf8mb4',
-    'collation': 'utf8mb4_unicode_ci'
-}
+def get_db_config():
+    """Get database configuration from environment"""
+    database_url = os.getenv('DATABASE_URL')
+    
+    if database_url:
+        # Parse DATABASE_URL for PostgreSQL
+        # Render uses postgres:// but psycopg2 needs postgresql://
+        if database_url.startswith('postgres://'):
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        return database_url
+    else:
+        # Local development fallback
+        return {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'database': os.getenv('DB_NAME', 'reminder_dashboard'),
+            'user': os.getenv('DB_USER', 'postgres'),
+            'password': os.getenv('DB_PASSWORD', ''),
+            'port': int(os.getenv('DB_PORT', 5432))
+        }
 
 def get_db_connection():
     """Create and return a database connection"""
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
+        db_config = get_db_config()
+        
+        if isinstance(db_config, str):
+            # Using DATABASE_URL
+            connection = psycopg2.connect(db_config, cursor_factory=RealDictCursor)
+        else:
+            # Using individual config parameters
+            connection = psycopg2.connect(**db_config, cursor_factory=RealDictCursor)
+        
         return connection
     except Error as e:
-        print(f"Error connecting to MySQL: {e}")
+        print(f"Error connecting to PostgreSQL: {e}")
         return None
 
 def init_database():
@@ -95,7 +117,7 @@ def init_database():
             # Create contractor_list table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS contractor_list (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     sno VARCHAR(50),
                     efile VARCHAR(255),
                     contractor TEXT,
@@ -106,17 +128,17 @@ def init_database():
                     end_date DATE,
                     duration VARCHAR(255),
                     file_name VARCHAR(255),
-                    file_base64 LONGTEXT,
+                    file_base64 TEXT,
                     file_type VARCHAR(100),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
             """)
             
             # Create bill_tracker table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS bill_tracker (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     sno VARCHAR(50),
                     efile VARCHAR(255),
                     contractor TEXT,
@@ -128,17 +150,17 @@ def init_database():
                     bill_paid_date DATE,
                     paid_amount VARCHAR(255),
                     file_name VARCHAR(255),
-                    file_base64 LONGTEXT,
+                    file_base64 TEXT,
                     file_type VARCHAR(100),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
             """)
             
             # Create epbg table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS epbg (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     sno VARCHAR(50),
                     contractor TEXT,
                     po_no VARCHAR(255),
@@ -149,53 +171,46 @@ def init_database():
                     gem_bid_no VARCHAR(255),
                     ref_efile_no VARCHAR(255),
                     file_name VARCHAR(255),
-                    file_base64 LONGTEXT,
+                    file_base64 TEXT,
                     file_type VARCHAR(100),
                     bg_no_attachment_name VARCHAR(255),
-                    bg_no_attachment_base64 LONGTEXT,
+                    bg_no_attachment_base64 TEXT,
                     bg_no_attachment_type VARCHAR(100),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
             """)
             
             # Create users table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     email VARCHAR(100) UNIQUE NOT NULL,
                     password VARCHAR(255) NOT NULL,
                     name VARCHAR(100) NOT NULL,
-                    role ENUM('admin', 'user', 'staff') NOT NULL DEFAULT 'user',
+                    role VARCHAR(20) NOT NULL DEFAULT 'user',
                     theme_preference VARCHAR(10) DEFAULT 'light',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
             """)
-
-            # Add theme_preference column if not exists (migration)
-            try:
-                cursor.execute("SHOW COLUMNS FROM users LIKE 'theme_preference'")
-                if not cursor.fetchone():
-                    cursor.execute("ALTER TABLE users ADD COLUMN theme_preference VARCHAR(10) DEFAULT 'light'")
-                    print("Added theme_preference column to users table")
-            except Error as e:
-                print(f"Error checking theme column: {e}")
             
             # Create password_resets table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS password_resets (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     email VARCHAR(100) NOT NULL,
                     otp_hash VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP NOT NULL,
-                    used BOOLEAN DEFAULT FALSE,
-                    INDEX (email),
-                    INDEX (otp_hash)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    used BOOLEAN DEFAULT FALSE
+                )
             """)
+            
+            # Create indexes
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_password_resets_otp_hash ON password_resets(otp_hash)")
             
             # Check if users table is empty and insert default users
             cursor.execute("SELECT COUNT(*) FROM users")
@@ -244,7 +259,7 @@ def login():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
         # Check if input is email or username
         if '@' in username_or_email:
@@ -351,7 +366,7 @@ def forgot_password():
         if not connection:
             return jsonify({'error': 'Database error'}), 500
             
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
         # Check if user exists
         cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
@@ -409,7 +424,7 @@ def reset_password():
         if not connection:
             return jsonify({'error': 'Database error'}), 500
             
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
         # Verify OTP
         otp_hash = hashlib.sha256(otp.encode()).hexdigest()
@@ -516,7 +531,7 @@ def get_contractor_list():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         cursor.execute("SELECT * FROM contractor_list ORDER BY id")
         records = cursor.fetchall()
         
@@ -602,7 +617,7 @@ def get_bill_tracker():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         cursor.execute("SELECT * FROM bill_tracker ORDER BY id")
         records = cursor.fetchall()
         
@@ -690,7 +705,7 @@ def get_epbg():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         cursor.execute("SELECT * FROM epbg ORDER BY id")
         records = cursor.fetchall()
         
